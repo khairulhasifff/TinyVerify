@@ -1,2 +1,21 @@
+# Visual Studio Internal Cache & Tracking Files
+.vs/
+out/
 build/
+*.user
+*.suo
+*.db
+*.opendb
+*.vsdx
+
+# Compiled Binary Objects
+*.obj
+*.exe
+*.pdb
+*.ilk
+*.lk
+*.pif
+
+# Explicit Dependencies Folder
 third_party/
+models/
