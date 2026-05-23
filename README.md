@@ -25,6 +25,7 @@ face verification systems using OpenCV and ONNX Runtime.
 
 ## Planned Architecture
 
+```text
 Image Input
     ↓
 image_loader.cpp
@@ -32,6 +33,8 @@ image_loader.cpp
 image_preprocessor.cpp
     ↓
 Face Detection
+    ↓
+Face Crop
     ↓
 ONNX Runtime
     ↓
@@ -42,6 +45,7 @@ Embedding Vector
 Cosine Similarity
     ↓
 Verification Result
+```
 
 ---
 
