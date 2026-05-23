@@ -134,7 +134,7 @@ int main() {
      * Persist debug image for inspection.
      * =========================================================================
      */
-    cv::imwrite("data/detected_face.jpg", input_image);
+    cv::imwrite("output/detected_face.jpg", input_image);
 
     std::cout << "Face detected successfully" << std::endl;
     std::cout << "x: " << face_box.x << std::endl;
@@ -142,7 +142,7 @@ int main() {
     std::cout << "width: " << face_box.width << std::endl;
     std::cout << "height: " << face_box.height << std::endl;
 
-    std::cout << "Saved debug image: data/detected_face.jpg" << std::endl;
+    std::cout << "Saved debug image: output/detected_face.jpg" << std::endl;
 
     /**
  * =========================================================================
@@ -161,9 +161,9 @@ int main() {
  */
     cv::Mat cropped_face = input_image(face_box).clone();
 
-    cv::imwrite("data/cropped_face.jpg", cropped_face);
+    cv::imwrite("output/cropped_face.jpg", cropped_face);
 
-    std::cout << "Saved cropped face: data/cropped_face.jpg" << std::endl;
+    std::cout << "Saved cropped face: output/cropped_face.jpg" << std::endl;
 
     /**
      * =========================================================================
