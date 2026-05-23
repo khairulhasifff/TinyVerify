@@ -1,31 +1,165 @@
 #include <iostream>
 #include <opencv2/opencv.hpp>
+
 #include "image_preprocessor.h"
+#include "face_detector.h"
 
 /**
- * @brief APPLICATION PIPELINE EXECUTION
- * * [Disk I/O Ingestion] ---> [Production Safeguard] ---> [Preprocessing Infra Layer]
- * (test_face.jpeg)            (Mat::empty())            (Model Contract Fit)
+ * ============================================================================
+ * TINYVERIFY — PIPELINE ORCHESTRATION ENTRYPOINT
+ * ============================================================================
+ *
+ * Current System Flow:
+ *
+ * Disk Asset
+ *     ↓
+ * Image Ingestion
+ *     ↓
+ * Defensive Validation
+ *     ↓
+ * Face Detection
+ *     ↓
+ * Debug Visualization
+ *     ↓
+ * Future Face Crop
+ *     ↓
+ * Preprocessing Pipeline
+ *
+ * ============================================================================
  */
+
 int main() {
+
     std::cout << "TinyVerify initialized successfully" << std::endl;
     std::cout << "-----------------------------------" << std::endl;
 
-    // Ingest the asset using our Phase 2 filename fix
+    /**
+     * =========================================================================
+     * STAGE 1 — IMAGE INGESTION
+     * =========================================================================
+     *
+     * Flow:
+     * Disk Asset → OpenCV Decoder → cv::Mat Pixel Matrix
+     *
+     * OpenCV loads compressed image bytes into RAM as a matrix structure.
+     * =========================================================================
+     */
     cv::Mat input_image = cv::imread("data/test_face.jpeg");
 
-    // Dynamic Production Safeguard
+    /**
+     * =========================================================================
+     * STAGE 2 — DEFENSIVE VALIDATION GATE
+     * =========================================================================
+     *
+     * Prevent downstream pipeline failures if the image cannot be loaded.
+     * =========================================================================
+     */
     if (input_image.empty()) {
-        std::cerr << "[SYSTEM-ERROR] Pipeline broken. Could not read image asset." << std::endl;
+        std::cerr << "[SYSTEM-ERROR] Could not read image asset." << std::endl;
         return -1;
     }
 
-    // Initialize our deterministic model contract engine
-    ImagePreprocessor preprocessor;
-    std::vector<float> model_input = preprocessor.preprocess(input_image);
+    /**
+     * =========================================================================
+     * STAGE 3 — FACE DETECTION INITIALIZATION
+     * =========================================================================
+     *
+     * Load Haar Cascade classifier into memory.
+     *
+     * The cascade contains pre-trained facial feature patterns used by
+     * OpenCV's classical computer vision engine.
+     * =========================================================================
+     */
+    FaceDetector detector(
+        "data/haarcascade_frontalface_default.xml"
+    );
 
-    std::cout << "-----------------------------------" << std::endl;
-    std::cout << "Preprocessing completed" << std::endl;
+    /**
+     * =========================================================================
+     * STAGE 4 — FACE LOCALIZATION PIPELINE
+     * =========================================================================
+     *
+     * Full Image
+     *     ↓
+     * Grayscale Conversion
+     *     ↓
+     * Haar Cascade Scan
+     *     ↓
+     * Face Coordinate Extraction
+     *
+     * Output:
+     * Bounding rectangle containing detected face coordinates.
+     * =========================================================================
+     */
+    cv::Rect face_box = detector.detect(input_image);
+
+    /**
+     * =========================================================================
+     * STAGE 5 — FACE DETECTION VALIDATION
+     * =========================================================================
+     *
+     * Ensure at least one face region was detected.
+     * =========================================================================
+     */
+    if (face_box.empty()) {
+        std::cerr << "[SYSTEM-ERROR] No face detected." << std::endl;
+        return -1;
+    }
+
+    /**
+     * =========================================================================
+     * STAGE 6 — DEBUG VISUALIZATION LAYER
+     * =========================================================================
+     *
+     * Draw bounding rectangle around detected face region.
+     *
+     * Purpose:
+     * - visual verification
+     * - debugging
+     * - pipeline observability
+     * =========================================================================
+     */
+    cv::rectangle(
+        input_image,
+        face_box,
+        cv::Scalar(0, 255, 0),
+        2
+    );
+
+    /**
+     * =========================================================================
+     * STAGE 7 — DEBUG OUTPUT EXPORT
+     * =========================================================================
+     *
+     * Persist debug image for inspection.
+     * =========================================================================
+     */
+    cv::imwrite("data/detected_face.jpg", input_image);
+
+    std::cout << "Face detected successfully" << std::endl;
+    std::cout << "x: " << face_box.x << std::endl;
+    std::cout << "y: " << face_box.y << std::endl;
+    std::cout << "width: " << face_box.width << std::endl;
+    std::cout << "height: " << face_box.height << std::endl;
+
+    std::cout << "Saved debug image: data/detected_face.jpg" << std::endl;
+
+    /**
+     * =========================================================================
+     * FUTURE PIPELINE STAGE
+     * =========================================================================
+     *
+     * Detected Face
+     *     ↓
+     * Face Crop
+     *     ↓
+     * Preprocessing Pipeline
+     *     ↓
+     * Tensor Conversion
+     *     ↓
+     * Future ONNX Runtime Inference
+     * =========================================================================
+     */
 
     return 0;
 }
