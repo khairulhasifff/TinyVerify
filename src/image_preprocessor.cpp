@@ -38,4 +38,4 @@ std::vector<float> ImagePreprocessor::preprocess(const cv::Mat& image) {
     std::cout << "Tensor size: " << tensor_buffer.size() << std::endl;
 
     return tensor_buffer;
-}
+} 
