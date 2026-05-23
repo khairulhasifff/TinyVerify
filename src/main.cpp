@@ -145,6 +145,54 @@ int main() {
     std::cout << "Saved debug image: data/detected_face.jpg" << std::endl;
 
     /**
+ * =========================================================================
+ * STAGE 8 — FACE REGION EXTRACTION
+ * =========================================================================
+ *
+ * Extract only the detected facial region from the image.
+ *
+ * Why This Matters:
+ *
+ * Face verification models should process only the face region,
+ * not the surrounding background.
+ *
+ * clone() creates an independent memory copy of the cropped region.
+ * =========================================================================
+ */
+    cv::Mat cropped_face = input_image(face_box).clone();
+
+    cv::imwrite("data/cropped_face.jpg", cropped_face);
+
+    std::cout << "Saved cropped face: data/cropped_face.jpg" << std::endl;
+
+    /**
+     * =========================================================================
+     * STAGE 9 — PREPROCESSING PIPELINE
+     * =========================================================================
+     *
+     * Full Face Region
+     *     ↓
+     * Resize to 112x112
+     *     ↓
+     * BGR → RGB conversion
+     *     ↓
+     * Float normalization
+     *     ↓
+     * Tensor flattening
+     *
+     * Output:
+     * Model-ready tensor buffer for future ONNX Runtime inference.
+     * =========================================================================
+     */
+    ImagePreprocessor preprocessor;
+
+    std::vector<float> model_input =
+        preprocessor.preprocess(cropped_face);
+
+    std::cout << "-----------------------------------" << std::endl;
+    std::cout << "Preprocessing completed" << std::endl;
+
+    /**
      * =========================================================================
      * FUTURE PIPELINE STAGE
      * =========================================================================
