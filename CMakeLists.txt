@@ -25,7 +25,7 @@ add_executable(TinyVerify
     src/main.cpp 
     src/image_loader.cpp
     src/image_preprocessor.cpp
-)
+ "src/face_detector.cpp")
 
 # 🛠️ ARCHITECTURAL LINKING: Step 5
 # Instruct the linker engine to bind OpenCV's pre-compiled binary files (.lib) to TinyVerify.exe
