@@ -3,6 +3,7 @@
 
 #include "image_preprocessor.h"
 #include "face_detector.h"
+#include "face_verifier.h"
 
 /**
  * ============================================================================
@@ -192,6 +193,32 @@ int main() {
 
     std::cout << "-----------------------------------" << std::endl;
     std::cout << "Preprocessing completed" << std::endl;
+
+    /**
+ * =========================================================================
+ * STAGE 10 — FACE VERIFICATION PLACEHOLDER
+ * =========================================================================
+ *
+ * This stage connects the preprocessing output to the future inference layer.
+ *
+ * Current behavior:
+ * - initializes FaceVerifier
+ * - sends preprocessed tensor into placeholder embedding generator
+ *
+ * Future behavior:
+ * - load ArcFace ONNX model
+ * - run ONNX Runtime inference
+ * - return real facial embedding vector
+ * =========================================================================
+ */
+    FaceVerifier verifier("models/arcface.onnx");
+
+    std::vector<float> embedding =
+        verifier.generate_embedding(model_input);
+
+    std::cout << "Generated placeholder embedding size: "
+        << embedding.size()
+        << std::endl;
 
     /**
      * =========================================================================
