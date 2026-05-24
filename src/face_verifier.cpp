@@ -37,16 +37,34 @@
  *
  * Current State:
  *
- * Placeholder initialization phase before ONNX Runtime integration.
+ * ONNX Runtime integration initialized.
  *
  * ============================================================================
  */
-FaceVerifier::FaceVerifier(const std::string& model_path) {
+FaceVerifier::FaceVerifier(const std::string& model_path)
+    : env_(ORT_LOGGING_LEVEL_WARNING, "TinyVerify"),
+      session_options_(),
+      session_(nullptr)
+{
+    session_options_.SetIntraOpNumThreads(1);
 
-    std::cout
-        << "FaceVerifier initialized with model path: "
-        << model_path
-        << std::endl;
+    session_options_.SetGraphOptimizationLevel(
+        GraphOptimizationLevel::ORT_ENABLE_EXTENDED
+    );
+
+    std::wstring wide_model_path(
+        model_path.begin(),
+        model_path.end()
+    );
+
+    session_ = Ort::Session(
+        env_,
+        wide_model_path.c_str(),
+        session_options_
+    );
+
+    std::cout << "FaceVerifier ONNX session loaded successfully" << std::endl;
+    std::cout << "Model path: " << model_path << std::endl;
 }
 
 /**
@@ -90,13 +108,9 @@ FaceVerifier::FaceVerifier(const std::string& model_path) {
  *
  * ============================================================================
  */
-std::vector<float> FaceVerifier::generate_embedding(
-    const std::vector<float>& input_tensor
-) {
-
-    std::cout
-        << "Embedding generation placeholder"
-        << std::endl;
+std::vector<float> FaceVerifier::generate_embedding(const Ort::Value& input_tensor)
+{
+    std::cout << "Embedding generation placeholder (ONNX Tensor received successfully)" << std::endl;
 
     /**
      * Placeholder embedding vector.

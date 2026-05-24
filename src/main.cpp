@@ -2,6 +2,7 @@
 #include <opencv2/opencv.hpp>
 #include <opencv2/core/utils/logger.hpp>
 
+#include <onnxruntime_cxx_api.h>
 #include "image_preprocessor.h"
 #include "face_detector.h"
 #include "face_verifier.h"
@@ -217,10 +218,34 @@ int main() {
  * - return real facial embedding vector
  * =========================================================================
  */
-    FaceVerifier verifier("models/arcface.onnx");
+ /** * ========================================================================= * STAGE 10 — REAL ONNX RUNTIME TENSOR TETHERING * ========================================================================= * * This stage binds the preprocessed floating-point vector into a real * ONNX Runtime memory allocation. * * Tensor Dimensions for ArcFace: * - Batch Size: 1 * - Channels: 3 (RGB) * - Height: 112 * - Width: 112 * * Total Flat Features: 1 * 3 * 112 * 112 = 37,632 elements * ========================================================================= */
+     // 1. Initialize our FaceVerifier with the active ArcFace model
+    FaceVerifier verifier("models/arcface_buffalo_1.onnx");
 
-    std::vector<float> embedding =
-        verifier.generate_embedding(model_input);
+    // 2. Define the input shape required by ArcFace Buffalo (1, 3, 112, 112)
+    std::vector<int64_t> input_shape = { 1, 3, 112, 112 };
+
+    // 3. Allocate a memory info block for CPU usage allocation
+    auto memory_info = Ort::MemoryInfo::CreateCpu(
+        OrtDeviceAllocator,
+        OrtMemTypeCPU
+    );
+
+    // 4. Create the real input tensor wrapper using our preprocessed float data pointer
+    Ort::Value input_tensor = Ort::Value::CreateTensor<float>(
+        memory_info,
+        const_cast<float*>(model_input.data()), // Points to your preprocessed data
+        model_input.size(),
+        input_shape.data(),
+        input_shape.size()
+    );
+
+    std::cout << "ONNX Input Tensor bound successfully!" << std::endl;
+    std::cout << "Tensor Type: Float32 | Shape: [1, 3, 112, 112]" << std::endl;
+    std::cout << "-----------------------------------" << std::endl;
+
+    // 5. Send your wrapped tensor into the model context
+    std::vector<float> embedding = verifier.generate_embedding(input_tensor); // <-- Change model_input to input_tensor
 
     std::cout << "Generated placeholder embedding size: "
         << embedding.size()

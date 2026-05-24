@@ -1,8 +1,8 @@
 #pragma once
 
-#include <opencv2/opencv.hpp>
 #include <vector>
 #include <string>
+#include <onnxruntime_cxx_api.h>
 
 /**
  * ============================================================================
@@ -69,9 +69,7 @@ public:
      * Future Output:
      * - facial embedding vector
      */
-    std::vector<float> generate_embedding(
-        const std::vector<float>& input_tensor
-    );
+    std::vector<float> generate_embedding(const Ort::Value& input_tensor);
 
     /**
      * @brief Compare two facial embeddings
@@ -87,11 +85,43 @@ public:
 private:
 
     /**
-     * Future ONNX Runtime session ownership
+        * =========================================================================
+        * ONNX Runtime Global Environment
+        * =========================================================================
+        *
+        * Owns:
+        * - logging system
+        * - runtime initialization
+        * - thread infrastructure
+        *
+        * Usually created once for the entire application lifecycle.
+        * =========================================================================
+        */
+    Ort::Env env_;
+
+    /**
+     * =========================================================================
+     * ONNX Runtime Session Configuration
+     * =========================================================================
      *
-     * Will later contain:
-     * - Ort::Session
-     * - Ort::Env
-     * - runtime inference state
+     * Controls:
+     * - graph optimization
+     * - execution providers
+     * - threading behavior
+     * =========================================================================
      */
+    Ort::SessionOptions session_options_;
+
+    /**
+     * =========================================================================
+     * ONNX Runtime Inference Session
+     * =========================================================================
+     *
+     * Owns:
+     * - loaded ArcFace neural network
+     * - execution graph
+     * - inference engine state
+     * =========================================================================
+     */
+    Ort::Session session_;
 };

@@ -1,5 +1,4 @@
 cmake_minimum_required(VERSION 3.10)
-
 # ============================================================================
 # PROJECT INITIALIZATION LAYER
 # ============================================================================
@@ -44,7 +43,6 @@ set(CMAKE_CXX_STANDARD_REQUIRED ON)
 set(OpenCV_DIR
     "${CMAKE_SOURCE_DIR}/third_party/opencv/build"
 )
-
 set(ONNXRUNTIME_DIR
     "${CMAKE_SOURCE_DIR}/third_party/onnxruntime-win-x64-1.26.0/onnxruntime-win-x64-1.26.0"
 )
@@ -83,9 +81,7 @@ find_package(OpenCV REQUIRED)
 #
 # ============================================================================
 include_directories(${CMAKE_SOURCE_DIR}/include)
-
 include_directories(${OpenCV_INCLUDE_DIRS})
-
 include_directories("${ONNXRUNTIME_DIR}/include")
 
 # ============================================================================
@@ -120,15 +116,10 @@ include_directories("${ONNXRUNTIME_DIR}/include")
 #
 # ============================================================================
 add_executable(TinyVerify
-
     src/main.cpp
-
     src/image_loader.cpp
-
     src/image_preprocessor.cpp
-
     src/face_detector.cpp
-
     src/face_verifier.cpp
 )
 
@@ -151,11 +142,8 @@ add_executable(TinyVerify
 #
 # ============================================================================
 target_link_libraries(
-
     TinyVerify
-
     ${OpenCV_LIBS}
-
     "${ONNXRUNTIME_DIR}/lib/onnxruntime.lib"
 )
 
@@ -185,11 +173,8 @@ target_link_libraries(
 #
 # ============================================================================
 add_custom_command(TARGET TinyVerify POST_BUILD
-
     COMMAND ${CMAKE_COMMAND} -E copy_if_different
-
     "$<$<CONFIG:Debug>:${CMAKE_SOURCE_DIR}/third_party/opencv/build/x64/vc16/bin/opencv_world4130d.dll>$<$<NOT:$<CONFIG:Debug>>:${CMAKE_SOURCE_DIR}/third_party/opencv/build/x64/vc16/bin/opencv_world4130.dll>"
-
     $<TARGET_FILE_DIR:TinyVerify>
 )
 
@@ -215,11 +200,8 @@ add_custom_command(TARGET TinyVerify POST_BUILD
 #
 # ============================================================================
 add_custom_command(TARGET TinyVerify POST_BUILD
-
     COMMAND ${CMAKE_COMMAND} -E copy_if_different
-
     "${ONNXRUNTIME_DIR}/lib/onnxruntime.dll"
-
     $<TARGET_FILE_DIR:TinyVerify>
 )
 
@@ -245,10 +227,28 @@ add_custom_command(TARGET TinyVerify POST_BUILD
 #
 # ============================================================================
 add_custom_command(TARGET TinyVerify POST_BUILD
-
     COMMAND ${CMAKE_COMMAND} -E copy_directory
-
     "${CMAKE_SOURCE_DIR}/data"
-
     "$<TARGET_FILE_DIR:TinyVerify>/data"
+)
+
+# ============================================================================
+# MODEL ASSET RUNTIME MIGRATION
+# ============================================================================
+#
+# Mirrors machine learning neural network models into the executable directory.
+#
+# Current Model Assets:
+# - arcface_buffalo_l.onnx
+#
+# Why This Exists:
+#
+# The ONNX Runtime engine requires direct file path access to the model file 
+# relative to the running binary context.
+#
+# ============================================================================
+add_custom_command(TARGET TinyVerify POST_BUILD
+    COMMAND ${CMAKE_COMMAND} -E copy_directory
+    "${CMAKE_SOURCE_DIR}/models"
+    "$<TARGET_FILE_DIR:TinyVerify>/models"
 )
