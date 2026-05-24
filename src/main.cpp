@@ -1,5 +1,6 @@
 #include <iostream>
 #include <opencv2/opencv.hpp>
+#include <opencv2/core/utils/logger.hpp>
 
 #include "image_preprocessor.h"
 #include "face_detector.h"
@@ -30,6 +31,11 @@
  */
 
 int main() {
+
+    // Mute OpenCV INFO logs (Only show Warnings and Errors)
+    cv::utils::logging::setLogLevel(
+        cv::utils::logging::LOG_LEVEL_ERROR
+    );
 
     std::cout << "TinyVerify initialized successfully" << std::endl;
     std::cout << "-----------------------------------" << std::endl;
