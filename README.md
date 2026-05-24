@@ -36,6 +36,8 @@ Image Preprocessing
     ↓
 Tensor Buffer Generation
     ↓
+FaceVerifier
+    ↓
 ONNX Runtime
     ↓
 ArcFace ONNX Model
@@ -62,7 +64,10 @@ Verification Result
 | Face detection | ✅ Complete |
 | Face cropping pipeline | ✅ Complete |
 | Runtime debug artifact generation | ✅ Complete |
-| ONNX Runtime integration | ⏳ Planned |
+| FaceVerifier inference module | ✅ Complete |
+| ONNX Runtime dependency integration | ✅ Complete |
+| Placeholder embedding pipeline | ✅ Complete |
+| ONNX Runtime integration | 🔄 In progress |
 | ArcFace embedding extraction | ⏳ Planned |
 | Cosine similarity verification | ⏳ Planned |
 | pybind11 Python bindings | ⏳ Planned |
@@ -104,7 +109,57 @@ The project currently outputs:
 
 ---
 
+## Current Inference Architecture
+
+TinyVerify now includes a dedicated FaceVerifier module responsible for
+future ONNX Runtime inference orchestration.
+
+The current inference layer supports:
+
+- ONNX Runtime SDK integration
+- modular inference ownership separation
+- placeholder embedding generation
+- future ArcFace model loading pipeline
+
+Current embedding behavior is placeholder-only and prepares the
+architecture for future real ONNX Runtime execution.
+
+---
+
+## Example Runtime Output
+
+```text
+TinyVerify initialized successfully
+-----------------------------------
+Face detected successfully
+x: 105
+y: 169
+width: 249
+height: 249
+Saved debug image: output/detected_face.jpg
+Saved cropped face: output/cropped_face.jpg
+Width: 112
+Height: 112
+Min: 0
+Max: 1
+Tensor size: 37632
+-----------------------------------
+Preprocessing completed
+FaceVerifier initialized with model path: models/arcface.onnx
+Embedding generation placeholder
+Generated placeholder embedding size: 512
+```
+
+---
+
 ## Installation
+
+### Dependencies
+
+TinyVerify currently integrates:
+
+- OpenCV 4.x
+- ONNX Runtime 1.x
 
 ### Prerequisites
 
@@ -131,7 +186,7 @@ This project is being used to learn:
 
 Planned future improvements include:
 
-- ONNX Runtime integration
+- Real ArcFace ONNX model inference
 - ArcFace embedding extraction
 - Cosine similarity verification
 - pybind11 Python bindings
