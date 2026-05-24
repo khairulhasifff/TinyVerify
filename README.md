@@ -28,13 +28,13 @@ face verification systems using OpenCV and ONNX Runtime.
 ```text
 Image Input
     ↓
-image_loader.cpp
-    ↓
-image_preprocessor.cpp
-    ↓
 Face Detection
     ↓
 Face Crop
+    ↓
+Image Preprocessing
+    ↓
+Tensor Buffer Generation
     ↓
 ONNX Runtime
     ↓
@@ -59,7 +59,9 @@ Verification Result
 | BGR → RGB conversion | ✅ Complete |
 | Pixel normalization | ✅ Complete |
 | Tensor flattening | ✅ Complete |
-| Face detection | 🔄 In progress |
+| Face detection | ✅ Complete |
+| Face cropping pipeline | ✅ Complete |
+| Runtime debug artifact generation | ✅ Complete |
 | ONNX Runtime integration | ⏳ Planned |
 | ArcFace embedding extraction | ⏳ Planned |
 | Cosine similarity verification | ⏳ Planned |
@@ -79,6 +81,26 @@ The current preprocessing pipeline performs:
 5. Flatten image memory into a contiguous tensor buffer
 
 This prepares image data for future ONNX Runtime inference.
+
+---
+
+## Current Pipeline Status
+
+The current TinyVerify pipeline successfully performs:
+
+1. Image loading using OpenCV
+2. Face detection using Haar Cascade classifiers
+3. Face region extraction (cropping)
+4. Image preprocessing:
+   - resize to 112x112
+   - BGR → RGB conversion
+   - normalization to 0.0–1.0
+5. Tensor buffer preparation for future ONNX Runtime inference
+
+The project currently outputs:
+- detected face visualization
+- cropped face artifacts
+- preprocessed tensor-ready image buffers
 
 ---
 
@@ -109,11 +131,12 @@ This project is being used to learn:
 
 Planned future improvements include:
 
-- Face detection and cropping
-- ArcFace ONNX inference
-- Face embedding comparison
-- Python bindings with pybind11
+- ONNX Runtime integration
+- ArcFace embedding extraction
+- Cosine similarity verification
+- pybind11 Python bindings
 - Benchmarking against Python implementations
+- Lightweight web-based demonstration interface
 
 ---
 
