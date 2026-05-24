@@ -195,8 +195,7 @@ This project is being used to learn:
 
 Planned future improvements include:
 
-- Real ArcFace embedding inference execution
-- ArcFace embedding extraction
+- Real ArcFace embedding inference
 - Cosine similarity verification
 - pybind11 Python bindings
 - Benchmarking against Python implementations
