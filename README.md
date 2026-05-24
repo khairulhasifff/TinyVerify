@@ -23,6 +23,14 @@ face verification systems using OpenCV and ONNX Runtime.
 
 ---
 
+## Engineering Focus
+
+TinyVerify focuses on understanding the deployment side of AI systems,
+including preprocessing pipelines, runtime inference orchestration,
+tensor preparation, and scalable verification architecture.
+
+---
+
 ## Planned Architecture
 
 ```text
