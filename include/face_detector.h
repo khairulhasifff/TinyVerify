@@ -60,6 +60,25 @@ public:
      */
     cv::Rect detect(const cv::Mat& image);
 
+    /**
+     * @brief Crop detected face region from the full image
+     *
+     * Input:
+     * - Original image matrix
+     * - Face bounding rectangle from detect()
+     *
+     * Output:
+     * - Cropped face image as an independent cv::Mat
+     *
+     * Why clone() later:
+     * - Ensures the cropped face has its own memory
+     * - Prevents accidental dependency on the original image buffer
+     */
+    cv::Mat crop_face(
+        const cv::Mat& image,
+        const cv::Rect& face_box
+    );
+
 private:
 
     /**

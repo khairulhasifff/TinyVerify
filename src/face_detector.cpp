@@ -16,14 +16,18 @@
  *
  * The XML file contains pre-trained Haar feature patterns used to
  * identify facial structures.
+ *
  * ============================================================================
  */
 FaceDetector::FaceDetector(const std::string& cascade_path) {
 
     // Load Haar Cascade classifier into memory
     if (!face_cascade_.load(cascade_path)) {
-        std::cerr << "[SYSTEM-ERROR] Failed to load cascade classifier: "
-            << cascade_path << std::endl;
+
+        std::cerr
+            << "[SYSTEM-ERROR] Failed to load cascade classifier: "
+            << cascade_path
+            << std::endl;
     }
 }
 
@@ -48,6 +52,7 @@ FaceDetector::FaceDetector(const std::string& cascade_path) {
  * RGB color information.
  *
  * This reduces computational complexity.
+ *
  * ============================================================================
  */
 cv::Rect FaceDetector::detect(const cv::Mat& image) {
@@ -63,7 +68,12 @@ cv::Rect FaceDetector::detect(const cv::Mat& image) {
      * OpenCV Haar cascades expect single-channel grayscale input.
      */
     cv::Mat gray;
-    cv::cvtColor(image, gray, cv::COLOR_BGR2GRAY);
+
+    cv::cvtColor(
+        image,
+        gray,
+        cv::COLOR_BGR2GRAY
+    );
 
     /**
      * STEP 2: Multi-Scale Face Detection
@@ -85,12 +95,51 @@ cv::Rect FaceDetector::detect(const cv::Mat& image) {
     /**
      * STEP 4: Primary Face Selection
      *
-     * Currently returns the first detected face.
+     * Current implementation:
+     * - returns first detected face
      *
-     * Future improvement:
-     * - Select largest face
-     * - Multi-face handling
-     * - Confidence ranking
+     * Future improvements:
+     * - largest face selection
+     * - confidence ranking
+     * - multi-face handling
      */
     return faces[0];
+}
+
+/**
+ * ============================================================================
+ * FACE REGION EXTRACTION PIPELINE
+ * ============================================================================
+ *
+ * Pipeline Flow:
+ *
+ * Original Image
+ *     ↓
+ * Bounding Rectangle Coordinates
+ *     ↓
+ * OpenCV Region Extraction
+ *     ↓
+ * Independent Face Matrix (clone)
+ *
+ * Why clone() Matters:
+ *
+ * OpenCV ROI slicing can reference the original image memory buffer.
+ *
+ * clone() creates a deep independent copy to ensure:
+ * - memory safety
+ * - preprocessing isolation
+ * - stable downstream tensor preparation
+ *
+ * This prevents accidental coupling between:
+ * - original image memory
+ * - cropped face memory
+ *
+ * ============================================================================
+ */
+cv::Mat FaceDetector::crop_face(
+    const cv::Mat& image,
+    const cv::Rect& face_box
+) {
+
+    return image(face_box).clone();
 }

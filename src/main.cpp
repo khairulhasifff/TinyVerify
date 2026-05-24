@@ -159,7 +159,8 @@ int main() {
  * clone() creates an independent memory copy of the cropped region.
  * =========================================================================
  */
-    cv::Mat cropped_face = input_image(face_box).clone();
+    cv::Mat cropped_face =
+        detector.crop_face(input_image, face_box);
 
     cv::imwrite("output/cropped_face.jpg", cropped_face);
 
