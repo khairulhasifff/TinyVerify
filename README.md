@@ -61,28 +61,31 @@ Verification Result
 
 ## Current Progress
 
+
 | Component | Status |
 |---|---|
 | Image loading (OpenCV) | ✅ Complete |
-| Image preprocessing pipeline | ✅ Complete |
+| Image preprocessing pipeline | 🔄 Implemented, needs validation |
 | Resize to 112x112 | ✅ Complete |
-| BGR → RGB conversion | ✅ Complete |
+| BGR → RGB conversion | 🔄 Implemented, not independently verified |
 | Pixel normalization | ✅ Complete |
 | Tensor flattening | ✅ Complete |
 | Face detection | ✅ Complete |
 | Face cropping pipeline | ✅ Complete |
 | Runtime debug artifact generation | ✅ Complete |
-| FaceVerifier inference module | ✅ Complete |
+| FaceVerifier module scaffold | ✅ Complete |
 | ONNX Runtime dependency integration | ✅ Complete |
 | Placeholder embedding pipeline | ✅ Complete |
 | ONNX Runtime session initialization | ✅ Complete |
-| ArcFace ONNX model loading | ✅ Complete |
+| ArcFace ONNX model loading | 🔄 Works when model file exists |
 | ONNX input tensor binding | ✅ Complete |
-| ONNX Runtime integration | 🔄 In progress |
+| Real ONNX Runtime inference execution | ⏳ Not completed |
 | ArcFace embedding extraction | ⏳ Planned |
-| Cosine similarity verification | ⏳ Planned |
-| pybind11 Python bindings | ⏳ Planned |
+| Cosine similarity verification | 🔄 Implemented, needs end-to-end validation |
+| `verify_pair()` threshold logic | 🔄 Implemented, not calibrated |
+| pybind11 Python bindings | ⏳ Planned / not importable yet |
 | Benchmarking | ⏳ Planned |
+| IC card / MyKad document scanner | ⏳ Not started |
 
 ---
 
@@ -96,7 +99,7 @@ The current preprocessing pipeline performs:
 4. Normalize pixel values from 0–255 to 0.0–1.0
 5. Flatten image memory into a contiguous tensor buffer
 
-This prepares image data for future ONNX Runtime inference.
+This prepares image data for ONNX Runtime input tensor binding.
 
 ---
 
@@ -111,7 +114,7 @@ The current TinyVerify pipeline successfully performs:
    - resize to 112x112
    - BGR → RGB conversion
    - normalization to 0.0–1.0
-5. Tensor buffer preparation for future ONNX Runtime inference
+5. Tensor buffer preparation for ONNX Runtime input tensor binding
 
 The project currently outputs:
 - detected face visualization
@@ -122,7 +125,7 @@ The project currently outputs:
 
 ## Current Inference Architecture
 
-TinyVerify now includes a dedicated FaceVerifier module responsible for
+TinyVerify now includes a dedicated `FaceVerifier` module responsible for
 future ONNX Runtime inference orchestration.
 
 The current inference layer supports:
@@ -130,12 +133,65 @@ The current inference layer supports:
 - ONNX Runtime SDK integration
 - modular inference ownership separation
 - ONNX Runtime session initialization
-- ArcFace ONNX model loading
+- ArcFace ONNX model loading when the model file exists
 - ONNX input tensor binding
 - placeholder embedding generation
 
-Current embedding behavior is placeholder-only and prepares the
-architecture for future real ONNX Runtime execution.
+Current embedding behavior is still placeholder/provisional. The project has
+successfully reached the point where a preprocessed float tensor can be bound
+to an ONNX Runtime input tensor, but real ArcFace inference output extraction
+has not yet been completed.
+
+The current stopping point is:
+
+```text
+Image loading
+    ↓
+Face detection
+    ↓
+Face crop
+    ↓
+Image preprocessing
+    ↓
+Tensor Buffer Generation
+    ↓
+FaceVerifier
+    ↓
+ONNX Runtime session setup
+    ↓
+ONNX input tensor binding
+    ↓
+Placeholder embedding generation
+```
+
+The next engineering step is:
+
+```text
+ONNX Runtime session.Run(...)
+    ↓
+Read output tensor
+    ↓
+Extract ArcFace embedding vector
+    ↓
+Compare embeddings using cosine similarity
+    ↓
+Return verification result
+```
+
+---
+
+## Known Gaps
+
+The following parts are not yet complete or not fully validated:
+
+- Real ONNX Runtime inference execution is not yet confirmed end-to-end.
+- ArcFace output tensor extraction still needs to be implemented.
+- `verify_pair()` threshold logic needs calibration.
+- BGR → RGB preprocessing needs explicit validation.
+- Python bindings are not currently importable.
+- Benchmarking scripts are not implemented yet.
+- IC card / MyKad document scanning has not started.
+- Real sample images are still needed for testing.
 
 ---
 
