@@ -61,7 +61,6 @@ Verification Result
 
 ## Current Progress
 
-
 | Component | Status |
 |---|---|
 | Image loading (OpenCV) | ✅ Complete |
@@ -69,7 +68,7 @@ Verification Result
 | Resize to 112x112 | ✅ Complete |
 | BGR → RGB conversion | 🔄 Implemented, not independently verified |
 | Pixel normalization | ✅ Complete |
-| Tensor flattening | ✅ Complete |
+| CHW tensor buffer generation | ✅ Complete |
 | Face detection | ✅ Complete |
 | Face cropping pipeline | ✅ Complete |
 | Runtime debug artifact generation | ✅ Complete |
@@ -97,7 +96,7 @@ The current preprocessing pipeline performs:
 2. Resize image to 112x112
 3. Convert BGR color space to RGB
 4. Normalize pixel values from 0–255 to 0.0–1.0
-5. Flatten image memory into a contiguous tensor buffer
+5. Convert image memory into a contiguous CHW tensor buffer
 
 This prepares image data for ONNX Runtime input tensor binding.
 
@@ -114,7 +113,7 @@ The current TinyVerify pipeline successfully performs:
    - resize to 112x112
    - BGR → RGB conversion
    - normalization to 0.0–1.0
-5. Tensor buffer preparation for ONNX Runtime input tensor binding
+5. CHW tensor buffer preparation for ONNX Runtime input tensor binding
 
 The project currently outputs:
 - detected face visualization
