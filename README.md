@@ -69,7 +69,7 @@ Verification Result
 | BGR → RGB conversion | 🔄 Implemented, not independently verified |
 | Pixel normalization | ✅ Complete |
 | Tensor buffer generation | ✅ Complete |
-| CHW tensor buffer generation | ⏳ Next fix |
+| CHW tensor buffer generation | ✅ Complete |
 | Face detection | ✅ Complete |
 | Face cropping pipeline | ✅ Complete |
 | Runtime debug artifact generation | ✅ Complete |
@@ -79,7 +79,7 @@ Verification Result
 | ONNX Runtime session initialization | ✅ Complete |
 | ArcFace ONNX model loading | 🔄 Works when model file exists |
 | ONNX input tensor binding | ✅ Complete |
-| Real ONNX Runtime inference execution | ⏳ Not completed |
+| Real ONNX Runtime inference execution | ⏳ Next step |
 | ArcFace embedding extraction | ⏳ Planned |
 | Cosine similarity verification | 🔄 Implemented, needs end-to-end validation |
 | `verify_pair()` threshold logic | 🔄 Implemented, not calibrated |
@@ -97,7 +97,8 @@ The current preprocessing pipeline performs:
 2. Resize image to 112x112
 3. Convert BGR color space to RGB
 4. Normalize pixel values from 0–255 to 0.0–1.0
-5. Flatten image memory into a contiguous tensor buffer
+5. Convert OpenCV HWC image memory into CHW tensor layout
+6. Store the result in a contiguous tensor buffer
 
 This prepares image data for ONNX Runtime input tensor binding.
 
@@ -114,7 +115,7 @@ The current TinyVerify pipeline successfully performs:
    - resize to 112x112
    - BGR → RGB conversion
    - normalization to 0.0–1.0
-5. Tensor buffer preparation for ONNX Runtime input tensor binding
+5. CHW tensor buffer preparation for ONNX Runtime input tensor binding
 
 The project currently outputs:
 - detected face visualization
@@ -141,6 +142,9 @@ Current embedding behavior is still placeholder/provisional. The project has
 successfully reached the point where a preprocessed float tensor can be bound
 to an ONNX Runtime input tensor, but real ArcFace inference output extraction
 has not yet been completed.
+
+The preprocessing tensor layout has been updated from OpenCV-style HWC memory
+to ONNX-compatible CHW layout for the input shape `[1, 3, 112, 112]`.
 
 The current stopping point is:
 
