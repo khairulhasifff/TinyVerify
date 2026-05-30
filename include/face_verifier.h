@@ -11,7 +11,8 @@
  *
  * Responsibility:
  *
- * Execute identity verification inference using facial embeddings.
+ * Execute facial embedding generation and similarity computation
+ * using ONNX Runtime and ArcFace.
  *
  * Current Pipeline Role:
  *
@@ -29,7 +30,7 @@
  *     ↓
  * Cosine Similarity
  *     ↓
- * Verification Decision
+ * Future Verification Decision
  *
  * Why This Exists:
  *
@@ -42,10 +43,12 @@
  * - load ArcFace ONNX model
  * - execute ONNX Runtime inference
  * - extract facial embeddings
+ * - compute cosine similarity
  *
  * Future Responsibilities:
- * - compute cosine similarity
- * - return verification confidence
+ * - verification thresholding
+ * - identity decision workflow
+ * - verification confidence reporting
  *
  * ============================================================================
  */
@@ -76,7 +79,7 @@ public:
     /**
      * @brief Compare two facial embeddings
      *
-     * Future Output:
+     * Output:
      * - cosine similarity score
      */
     float compute_similarity(

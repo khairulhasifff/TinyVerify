@@ -81,8 +81,8 @@ Verification Result
 | ONNX input tensor binding | ✅ Complete |
 | Real ONNX Runtime inference execution | ✅ Complete |
 | ArcFace embedding extraction | ✅ Complete |
-| Cosine similarity verification | 🔄 Implemented, needs end-to-end validation |
-| `verify_pair()` threshold logic | 🔄 Implemented, not calibrated |
+| Cosine similarity computation | ✅ Complete (self-similarity validated) |
+| `verify_pair()` verification workflow | ⏳ Not implemented yet |
 | pybind11 Python bindings | ⏳ Planned / not importable yet |
 | Benchmarking | ⏳ Planned |
 | IC card / MyKad document scanner | ⏳ Not started |
@@ -119,12 +119,14 @@ The current TinyVerify pipeline successfully performs:
 6. ONNX Runtime input tensor binding
 7. ArcFace inference execution
 8. Real 512-dimensional embedding extraction
+9. Cosine similarity computation
 
 The project currently outputs:
 - detected face visualization
 - cropped face artifacts
 - preprocessed tensor-ready image buffers
 - real ArcFace embedding size confirmation
+- cosine similarity scores
 
 ---
 
@@ -143,6 +145,7 @@ The current inference layer supports:
 - real ONNX Runtime `session.Run(...)` execution
 - ArcFace output tensor extraction
 - real 512-dimensional embedding generation
+- cosine similarity computation
 
 Current embedding behavior now uses real ONNX Runtime inference. A preprocessed
 CHW float tensor is bound to an ONNX Runtime input tensor, executed through the
@@ -152,7 +155,7 @@ ArcFace ONNX model using `session.Run(...)`, and copied into a real
 The preprocessing tensor layout has been updated from OpenCV-style HWC memory
 to ONNX-compatible CHW layout for the input shape `[1, 3, 112, 112]`.
 
-The current stopping point is:
+The current verified pipeline is:
 
 ```text
 Image loading
@@ -176,6 +179,8 @@ ONNX Runtime session.Run(...)
 ArcFace output tensor extraction
     ↓
 Real 512-dimensional embedding generation
+    ↓
+Cosine similarity computation
 ```
 
 The next engineering step is:
@@ -185,7 +190,9 @@ Generate embedding for image A
     ↓
 Generate embedding for image B
     ↓
-Compute cosine similarity
+Compute cosine similarity between real embeddings
+    ↓
+Validate similarity scores
     ↓
 Apply verification threshold
     ↓
@@ -199,8 +206,9 @@ Return verification result
 The following parts are not yet complete or not fully validated:
 
 - End-to-end two-image verification has not been validated yet.
-- Cosine similarity and threshold-based verification still need real embedding-pair validation.
-- `verify_pair()` threshold logic needs calibration.
+- Cosine similarity is implemented and validated using self-comparison, but still needs validation using real image pairs.
+- Threshold-based verification has not been implemented or calibrated yet.
+- `verify_pair()` verification workflow is not implemented yet.
 - BGR → RGB preprocessing needs explicit validation.
 - Python bindings are not currently importable.
 - Benchmarking scripts are not implemented yet.
@@ -238,6 +246,8 @@ ONNX Output Name: 683
 Real ONNX inference completed successfully
 Embedding size: 512
 Generated ArcFace embedding size: 512
+Cosine similarity: 1
+Self similarity score: 1
 ```
 
 ---

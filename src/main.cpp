@@ -268,5 +268,44 @@ int main() {
         << embedding.size()
         << std::endl;
 
+    /**
+     * =========================================================================
+     * STAGE 11 — COSINE SIMILARITY SANITY TEST
+     * =========================================================================
+     *
+     * Purpose:
+     *
+     * Validate that the cosine similarity implementation behaves correctly.
+     *
+     * Current test:
+     *
+     * The embedding is compared against itself.
+     *
+     * Expected result:
+     *
+     * Cosine similarity ≈ 1.0
+     *
+     * Why This Matters:
+     *
+     * Before introducing a second image and full verification logic,
+     * TinyVerify first validates that the mathematical comparison layer
+     * is functioning correctly.
+     *
+     * Future behavior:
+     *
+     * - generate embedding A
+     * - generate embedding B
+     * - compute cosine similarity
+     * - apply verification threshold
+     * - return same/different identity decision
+     * =========================================================================
+     */
+    float self_similarity =
+        verifier.compute_similarity(embedding, embedding);
+
+    std::cout << "Self similarity score: "
+        << self_similarity
+        << std::endl;
+
     return 0;
 }

@@ -2,6 +2,7 @@
 
 #include <iostream>
 #include <stdexcept>
+#include <cmath>
 
 /**
  * ============================================================================
@@ -245,7 +246,7 @@ std::vector<float> FaceVerifier::generate_embedding(const Ort::Value& input_tens
  *
  * Current State:
  *
- * Placeholder implementation before real mathematical comparison logic.
+ * Real cosine similarity computation implemented.
  *
  * ============================================================================
  */
@@ -253,15 +254,35 @@ float FaceVerifier::compute_similarity(
     const std::vector<float>& embedding_a,
     const std::vector<float>& embedding_b
 ) {
+    if (embedding_a.empty() || embedding_b.empty()) {
+        throw std::runtime_error("Cannot compute similarity: embedding is empty.");
+    }
 
-    std::cout
-        << "Similarity computation placeholder"
+    if (embedding_a.size() != embedding_b.size()) {
+        throw std::runtime_error("Cannot compute similarity: embedding sizes do not match.");
+    }
+
+    float dot_product = 0.0f;
+    float norm_a = 0.0f;
+    float norm_b = 0.0f;
+
+    for (size_t i = 0; i < embedding_a.size(); ++i) {
+        dot_product += embedding_a[i] * embedding_b[i];
+        norm_a += embedding_a[i] * embedding_a[i];
+        norm_b += embedding_b[i] * embedding_b[i];
+    }
+
+    if (norm_a == 0.0f || norm_b == 0.0f) {
+        throw std::runtime_error("Cannot compute similarity: embedding norm is zero.");
+    }
+
+    float similarity =
+        dot_product /
+        (std::sqrt(norm_a) * std::sqrt(norm_b));
+
+    std::cout << "Cosine similarity: "
+        << similarity
         << std::endl;
 
-    /**
-     * Placeholder similarity score.
-     *
-     * Future implementation will return actual cosine similarity values.
-     */
-    return 0.0f;
+    return similarity;
 }
