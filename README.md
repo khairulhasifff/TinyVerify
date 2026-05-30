@@ -3,8 +3,8 @@
 TinyVerify is a C++ learning project focused on understanding 
 face verification preprocessing and deployment-oriented AI engineering.
 
-The project uses OpenCV for image preprocessing and is being developed
-toward ONNX Runtime inference using the InsightFace ArcFace model.
+The project uses OpenCV for image preprocessing and ONNX Runtime inference
+using the InsightFace ArcFace model.
 
 Built as a portfolio project inspired by real-world eKYC and fintech
 verification systems.
@@ -75,12 +75,12 @@ Verification Result
 | Runtime debug artifact generation | ✅ Complete |
 | FaceVerifier module scaffold | ✅ Complete |
 | ONNX Runtime dependency integration | ✅ Complete |
-| Placeholder embedding pipeline | ✅ Complete |
+| Placeholder embedding pipeline | ✅ Replaced by real ONNX inference |
 | ONNX Runtime session initialization | ✅ Complete |
 | ArcFace ONNX model loading | 🔄 Works when model file exists |
 | ONNX input tensor binding | ✅ Complete |
-| Real ONNX Runtime inference execution | ⏳ Next step |
-| ArcFace embedding extraction | ⏳ Planned |
+| Real ONNX Runtime inference execution | ✅ Complete |
+| ArcFace embedding extraction | ✅ Complete |
 | Cosine similarity verification | 🔄 Implemented, needs end-to-end validation |
 | `verify_pair()` threshold logic | 🔄 Implemented, not calibrated |
 | pybind11 Python bindings | ⏳ Planned / not importable yet |
@@ -115,19 +115,23 @@ The current TinyVerify pipeline successfully performs:
    - resize to 112x112
    - BGR → RGB conversion
    - normalization to 0.0–1.0
-5. CHW tensor buffer preparation for ONNX Runtime input tensor binding
+5. CHW tensor buffer preparation for ONNX Runtime inference
+6. ONNX Runtime input tensor binding
+7. ArcFace inference execution
+8. Real 512-dimensional embedding extraction
 
 The project currently outputs:
 - detected face visualization
 - cropped face artifacts
 - preprocessed tensor-ready image buffers
+- real ArcFace embedding size confirmation
 
 ---
 
 ## Current Inference Architecture
 
 TinyVerify now includes a dedicated `FaceVerifier` module responsible for
-future ONNX Runtime inference orchestration.
+ONNX Runtime inference orchestration.
 
 The current inference layer supports:
 
@@ -136,12 +140,14 @@ The current inference layer supports:
 - ONNX Runtime session initialization
 - ArcFace ONNX model loading when the model file exists
 - ONNX input tensor binding
-- placeholder embedding generation
+- real ONNX Runtime `session.Run(...)` execution
+- ArcFace output tensor extraction
+- real 512-dimensional embedding generation
 
-Current embedding behavior is still placeholder/provisional. The project has
-successfully reached the point where a preprocessed float tensor can be bound
-to an ONNX Runtime input tensor, but real ArcFace inference output extraction
-has not yet been completed.
+Current embedding behavior now uses real ONNX Runtime inference. A preprocessed
+CHW float tensor is bound to an ONNX Runtime input tensor, executed through the
+ArcFace ONNX model using `session.Run(...)`, and copied into a real
+512-dimensional embedding vector.
 
 The preprocessing tensor layout has been updated from OpenCV-style HWC memory
 to ONNX-compatible CHW layout for the input shape `[1, 3, 112, 112]`.
@@ -165,19 +171,23 @@ ONNX Runtime session setup
     ↓
 ONNX input tensor binding
     ↓
-Placeholder embedding generation
+ONNX Runtime session.Run(...)
+    ↓
+ArcFace output tensor extraction
+    ↓
+Real 512-dimensional embedding generation
 ```
 
 The next engineering step is:
 
 ```text
-ONNX Runtime session.Run(...)
+Generate embedding for image A
     ↓
-Read output tensor
+Generate embedding for image B
     ↓
-Extract ArcFace embedding vector
+Compute cosine similarity
     ↓
-Compare embeddings using cosine similarity
+Apply verification threshold
     ↓
 Return verification result
 ```
@@ -188,8 +198,8 @@ Return verification result
 
 The following parts are not yet complete or not fully validated:
 
-- Real ONNX Runtime inference execution is not yet confirmed end-to-end.
-- ArcFace output tensor extraction still needs to be implemented.
+- End-to-end two-image verification has not been validated yet.
+- Cosine similarity and threshold-based verification still need real embedding-pair validation.
 - `verify_pair()` threshold logic needs calibration.
 - BGR → RGB preprocessing needs explicit validation.
 - Python bindings are not currently importable.
@@ -223,8 +233,11 @@ Model path: models/arcface_buffalo_1.onnx
 ONNX Input Tensor bound successfully!
 Tensor Type: Float32 | Shape: [1, 3, 112, 112]
 -----------------------------------
-Embedding generation placeholder (ONNX Tensor received successfully)
-Generated placeholder embedding size: 512
+ONNX Input Name: input.1
+ONNX Output Name: 683
+Real ONNX inference completed successfully
+Embedding size: 512
+Generated ArcFace embedding size: 512
 ```
 
 ---
@@ -263,8 +276,8 @@ This project is being used to learn:
 
 Planned future improvements include:
 
-- Real ArcFace embedding inference
-- Cosine similarity verification
+- Two-image ArcFace embedding comparison
+- Cosine similarity verification and threshold calibration
 - pybind11 Python bindings
 - Benchmarking against Python implementations
 - Lightweight web-based demonstration interface

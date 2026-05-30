@@ -1,13 +1,14 @@
 #include "face_verifier.h"
 
 #include <iostream>
+#include <stdexcept>
 
 /**
  * ============================================================================
  * CONSTRUCTOR: INFERENCE ENGINE INITIALIZATION
  * ============================================================================
  *
- * Future System Flow:
+ * Current System Flow:
  *
  * ArcFace ONNX Model
  *     ↓
@@ -19,7 +20,7 @@
  *
  * Architectural Purpose:
  *
- * This constructor will later become responsible for:
+ * This constructor is responsible for:
  * - loading the ONNX model into memory
  * - initializing ONNX Runtime
  * - creating inference execution sessions
@@ -72,7 +73,7 @@ FaceVerifier::FaceVerifier(const std::string& model_path)
  * EMBEDDING GENERATION PIPELINE
  * ============================================================================
  *
- * Future Inference Flow:
+ * Current Inference Flow:
  *
  * Preprocessed Tensor Buffer
  *     ↓
@@ -104,20 +105,105 @@ FaceVerifier::FaceVerifier(const std::string& model_path)
  *
  * Current State:
  *
- * Placeholder implementation before real ONNX Runtime inference.
+ * Real ONNX Runtime inference execution implemented.
+ * This function runs session_.Run(...) and extracts the model output tensor
+ * into a C++ embedding vector.
  *
  * ============================================================================
  */
 std::vector<float> FaceVerifier::generate_embedding(const Ort::Value& input_tensor)
 {
-    std::cout << "Embedding generation placeholder (ONNX Tensor received successfully)" << std::endl;
+    /**
+     * ONNX Runtime uses model input/output node names to connect user-provided
+     * tensors to the loaded neural network graph.
+     *
+     * Instead of hardcoding names such as "input.1" or "output", TinyVerify
+     * asks the loaded ArcFace model what its actual input and output names are.
+     *
+     * This keeps the inference layer more robust across different ONNX exports.
+     */
+    Ort::AllocatorWithDefaultOptions allocator;
+
+    auto input_name_allocated = session_.GetInputNameAllocated(0, allocator);
+    auto output_name_allocated = session_.GetOutputNameAllocated(0, allocator);
+
+    const char* input_name = input_name_allocated.get();
+    const char* output_name = output_name_allocated.get();
+
+    std::cout << "ONNX Input Name: " << input_name << std::endl;
+    std::cout << "ONNX Output Name: " << output_name << std::endl;
 
     /**
-     * Placeholder embedding vector.
+     * Actual ONNX Runtime inference execution.
      *
-     * Future implementation will return real ArcFace embeddings.
+     * Current Data Flow:
+     *
+     * Preprocessed CHW Tensor
+     *     ↓
+     * ONNX Runtime Input Tensor
+     *     ↓
+     * session_.Run(...)
+     *     ↓
+     * ArcFace Output Tensor
+     *     ↓
+     * Embedding Vector
+     *
+     * Expected input:
+     * - Type: float32
+     * - Shape: [1, 3, 112, 112]
+     * - Layout: NCHW
      */
-    return std::vector<float>(512, 0.0f);
+    const char* input_names[] = { input_name };
+    const char* output_names[] = { output_name };
+
+    std::vector<Ort::Value> output_tensors = session_.Run(
+        Ort::RunOptions{ nullptr },
+        input_names,
+        &input_tensor,
+        1,
+        output_names,
+        1
+    );
+
+    /**
+     * A successful ArcFace inference call should return at least one output
+     * tensor. If this is empty, ONNX Runtime executed but did not return usable
+     * model output.
+     */
+    if (output_tensors.empty())
+    {
+        throw std::runtime_error("ONNX Runtime returned no output tensors");
+    }
+
+    Ort::Value& output_tensor = output_tensors.front();
+
+    /**
+     * Extract output tensor metadata.
+     *
+     * Typical ArcFace output:
+     * - Shape: [1, 512]
+     * - Element count: 512
+     */
+    auto output_info = output_tensor.GetTensorTypeAndShapeInfo();
+    size_t output_element_count = output_info.GetElementCount();
+
+    /**
+     * Copy ONNX Runtime output memory into a normal C++ vector.
+     *
+     * This prevents the rest of TinyVerify from depending on ONNX Runtime tensor
+     * lifetime rules.
+     */
+    float* output_data = output_tensor.GetTensorMutableData<float>();
+
+    std::vector<float> embedding(
+        output_data,
+        output_data + output_element_count
+    );
+
+    std::cout << "Real ONNX inference completed successfully" << std::endl;
+    std::cout << "Embedding size: " << embedding.size() << std::endl;
+
+    return embedding;
 }
 
 /**

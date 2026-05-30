@@ -24,9 +24,15 @@
  *     ↓
  * Debug Visualization
  *     ↓
- * Future Face Crop
+ * Face Crop
  *     ↓
  * Preprocessing Pipeline
+ *     ↓
+ * ONNX Runtime Tensor Binding
+ *     ↓
+ * ArcFace Inference
+ *     ↓
+ * Embedding Vector
  *
  * ============================================================================
  */
@@ -187,10 +193,10 @@ int main() {
      *     ↓
      * Float normalization
      *     ↓
-     * Tensor flattening
+     * CHW tensor buffer generation
      *
      * Output:
-     * Model-ready tensor buffer for future ONNX Runtime inference.
+     * Model-ready CHW tensor buffer for ONNX Runtime inference.
      * =========================================================================
      */
     ImagePreprocessor preprocessor;
@@ -202,24 +208,35 @@ int main() {
     std::cout << "Preprocessing completed" << std::endl;
 
     /**
- * =========================================================================
- * STAGE 10 — FACE VERIFICATION PLACEHOLDER
- * =========================================================================
- *
- * This stage connects the preprocessing output to the future inference layer.
- *
- * Current behavior:
- * - initializes FaceVerifier
- * - sends preprocessed tensor into placeholder embedding generator
- *
- * Future behavior:
- * - load ArcFace ONNX model
- * - run ONNX Runtime inference
- * - return real facial embedding vector
- * =========================================================================
- */
- /** * ========================================================================= * STAGE 10 — REAL ONNX RUNTIME TENSOR TETHERING * ========================================================================= * * This stage binds the preprocessed floating-point vector into a real * ONNX Runtime memory allocation. * * Tensor Dimensions for ArcFace: * - Batch Size: 1 * - Channels: 3 (RGB) * - Height: 112 * - Width: 112 * * Total Flat Features: 1 * 3 * 112 * 112 = 37,632 elements * ========================================================================= */
-     // 1. Initialize our FaceVerifier with the active ArcFace model
+     * =========================================================================
+     * STAGE 10 — REAL ONNX RUNTIME INFERENCE
+     * =========================================================================
+     *
+     * This stage bridges TinyVerify's preprocessing pipeline with ONNX Runtime.
+     *
+     * Current behavior:
+     * - initializes FaceVerifier with the ArcFace ONNX model
+     * - defines the model input shape as [1, 3, 112, 112]
+     * - wraps the preprocessed CHW float buffer into an ONNX Runtime tensor
+     * - runs ArcFace inference through session_.Run(...)
+     * - receives a real 512-dimensional embedding vector
+     *
+     * Tensor Dimensions for ArcFace:
+     * - Batch Size: 1
+     * - Channels: 3 RGB
+     * - Height: 112
+     * - Width: 112
+     *
+     * Total Flat Features:
+     * 1 * 3 * 112 * 112 = 37,632 elements
+     *
+     * Future behavior:
+     * - compare two real embeddings
+     * - compute cosine similarity
+     * - apply a verification threshold
+     * =========================================================================
+     */
+    // 1. Initialize our FaceVerifier with the active ArcFace model
     FaceVerifier verifier("models/arcface_buffalo_1.onnx");
 
     // 2. Define the input shape required by ArcFace Buffalo (1, 3, 112, 112)
@@ -244,29 +261,12 @@ int main() {
     std::cout << "Tensor Type: Float32 | Shape: [1, 3, 112, 112]" << std::endl;
     std::cout << "-----------------------------------" << std::endl;
 
-    // 5. Send your wrapped tensor into the model context
-    std::vector<float> embedding = verifier.generate_embedding(input_tensor); // <-- Change model_input to input_tensor
+    // 5. Run ArcFace inference and extract the embedding vector
+    std::vector<float> embedding = verifier.generate_embedding(input_tensor);
 
-    std::cout << "Generated placeholder embedding size: "
+    std::cout << "Generated ArcFace embedding size: "
         << embedding.size()
         << std::endl;
-
-    /**
-     * =========================================================================
-     * FUTURE PIPELINE STAGE
-     * =========================================================================
-     *
-     * Detected Face
-     *     ↓
-     * Face Crop
-     *     ↓
-     * Preprocessing Pipeline
-     *     ↓
-     * Tensor Conversion
-     *     ↓
-     * Future ONNX Runtime Inference
-     * =========================================================================
-     */
 
     return 0;
 }

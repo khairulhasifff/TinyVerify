@@ -13,7 +13,7 @@
  *
  * Execute identity verification inference using facial embeddings.
  *
- * Future Pipeline Role:
+ * Current Pipeline Role:
  *
  * Cropped Face
  *     ↓
@@ -38,10 +38,12 @@
  * - face detection
  * - orchestration logic
  *
- * Future Responsibilities:
+ * Current Responsibilities:
  * - load ArcFace ONNX model
  * - execute ONNX Runtime inference
  * - extract facial embeddings
+ *
+ * Future Responsibilities:
  * - compute cosine similarity
  * - return verification confidence
  *
@@ -54,7 +56,7 @@ public:
     /**
      * @brief Constructor
      *
-     * Future responsibility:
+     * Current responsibility:
      * - initialize ONNX Runtime session
      * - load ArcFace model into memory
      */
@@ -63,11 +65,11 @@ public:
     /**
      * @brief Generate embedding vector from preprocessed tensor
      *
-     * Future Input:
-     * - normalized tensor buffer
+     * Input:
+     * - normalized CHW ONNX Runtime tensor
      *
-     * Future Output:
-     * - facial embedding vector
+     * Output:
+     * - ArcFace facial embedding vector
      */
     std::vector<float> generate_embedding(const Ort::Value& input_tensor);
 
