@@ -1,7 +1,8 @@
 #include "image_preprocessor.h"
 #include <iostream>
+#include <vector>
 
-std::vector<float> ImagePreprocessor::preprocess(const cv::Mat& image) {
+std::vector<float> ImagePreprocessor::preprocess(const cv::Mat& image, bool debug) {
     /**
      * @brief MEMORY LAYOUT TRANSFORMATIONS
      * Step 1: [cv::resize]       --> Enforce exact spatial grid matrix boundaries
@@ -18,8 +19,10 @@ std::vector<float> ImagePreprocessor::preprocess(const cv::Mat& image) {
     cv::Mat resized_image;
     cv::resize(image, resized_image, cv::Size(target_width, target_height));
 
-    std::cout << "Width: " << resized_image.cols << std::endl;
-    std::cout << "Height: " << resized_image.rows << std::endl;
+    if (debug) {
+        std::cout << "Width: " << resized_image.cols << std::endl;
+        std::cout << "Height: " << resized_image.rows << std::endl;
+    }
 
     // 2. Chromatic Alignment: Enforce RGB channel order (OpenCV default is BGR)
     cv::Mat rgb_image;
@@ -33,8 +36,10 @@ std::vector<float> ImagePreprocessor::preprocess(const cv::Mat& image) {
     double min_val, max_val;
     cv::minMaxLoc(float_image.reshape(1), &min_val, &max_val);
 
-    std::cout << "Min: " << min_val << std::endl;
-    std::cout << "Max: " << max_val << std::endl;
+    if (debug) {
+        std::cout << "Min: " << min_val << std::endl;
+        std::cout << "Max: " << max_val << std::endl;
+    }
 
     // 4. Tensor Memory Layout Conversion: HWC -> CHW
     std::vector<float> tensor_buffer(channels * target_height * target_width);
@@ -48,7 +53,9 @@ std::vector<float> ImagePreprocessor::preprocess(const cv::Mat& image) {
         }
     }
 
-    std::cout << "Tensor size: " << tensor_buffer.size() << std::endl;
+    if (debug) {
+        std::cout << "Tensor size: " << tensor_buffer.size() << std::endl;
+    }
 
     return tensor_buffer;
 }

@@ -494,7 +494,7 @@ bool validate_preprocessing_color_layout(ImagePreprocessor& preprocessor)
     );
 
     std::vector<float> tensor =
-        preprocessor.preprocess(red_bgr_image);
+        preprocessor.preprocess(red_bgr_image, true);
 
     if (tensor.size() != channel_size * 3) {
         std::cerr << "[PREPROCESS-VALIDATION-ERROR] Unexpected tensor size: "
