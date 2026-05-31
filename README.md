@@ -66,7 +66,7 @@ Verification Result
 | Image loading (OpenCV) | ✅ Complete |
 | Image preprocessing pipeline | ✅ Working, needs controlled validation |
 | Resize to 112x112 | ✅ Complete |
-| BGR → RGB conversion | 🔄 Implemented, not independently verified |
+| BGR → RGB conversion | ✅ Validated with controlled color test |
 | Pixel normalization | ✅ Complete |
 | Tensor buffer generation | ✅ Complete |
 | CHW tensor buffer generation | ✅ Complete |
@@ -241,7 +241,7 @@ The current threshold-based result is temporary and uncalibrated, but the decisi
 The following parts are not yet complete or not fully validated:
 
 - Threshold-based verification now lives in `FaceVerifier::verify_pair()`, but the threshold is still temporary and uncalibrated.
-- BGR → RGB preprocessing needs explicit validation.
+- BGR → RGB preprocessing has a basic controlled validation, but broader preprocessing tests are still needed.
 - Python bindings are not currently importable.
 - Benchmarking scripts are not implemented yet.
 - IC card / MyKad document scanning has not started.

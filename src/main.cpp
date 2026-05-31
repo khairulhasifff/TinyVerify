@@ -429,6 +429,108 @@ std::vector<float> generate_embedding_from_image(
     return embedding;
 }
 
+/**
+ * ============================================================================
+ * FUNCTION: validate_preprocessing_color_layout
+ * ============================================================================
+ *
+ * Responsibility:
+ *
+ * Run a controlled preprocessing sanity check for BGR → RGB conversion and
+ * CHW tensor layout.
+ *
+ * Why This Exists:
+ *
+ * OpenCV stores color images in BGR order by default.
+ * ArcFace-style model inputs usually expect RGB channel order.
+ *
+ * TinyVerify's ImagePreprocessor is responsible for:
+ *
+ * BGR image
+ *     ↓
+ * RGB conversion
+ *     ↓
+ * normalization
+ *     ↓
+ * CHW tensor layout
+ *
+ * This test creates a known solid red OpenCV image:
+ *
+ * cv::Scalar(0, 0, 255)
+ *
+ * In OpenCV BGR order, that means:
+ *
+ * B = 0
+ * G = 0
+ * R = 255
+ *
+ * After preprocessing, the first pixel in CHW layout should be:
+ *
+ * R = 1.0
+ * G = 0.0
+ * B = 0.0
+ *
+ * This validates both:
+ * - BGR → RGB channel conversion
+ * - HWC → CHW tensor indexing
+ *
+ * Current Limitation:
+ *
+ * This is a simple sanity check, not a full unit test framework.
+ *
+ * ============================================================================
+ */
+bool validate_preprocessing_color_layout(ImagePreprocessor& preprocessor)
+{
+    constexpr int image_width = 112;
+    constexpr int image_height = 112;
+    constexpr int channel_size = image_width * image_height;
+
+    cv::Mat red_bgr_image(
+        image_height,
+        image_width,
+        CV_8UC3,
+        cv::Scalar(0, 0, 255)
+    );
+
+    std::vector<float> tensor =
+        preprocessor.preprocess(red_bgr_image);
+
+    if (tensor.size() != channel_size * 3) {
+        std::cerr << "[PREPROCESS-VALIDATION-ERROR] Unexpected tensor size: "
+            << tensor.size()
+            << std::endl;
+
+        return false;
+    }
+
+    const float r = tensor[0];
+    const float g = tensor[channel_size];
+    const float b = tensor[channel_size * 2];
+
+    std::cout << std::endl;
+    std::cout << "[Preprocessing Validation]" << std::endl;
+    std::cout << "Controlled input: OpenCV BGR red pixel cv::Scalar(0, 0, 255)" << std::endl;
+    std::cout << "Expected RGB CHW first pixel: R=1, G=0, B=0" << std::endl;
+    std::cout << "Observed RGB CHW first pixel: "
+        << "R=" << r
+        << ", G=" << g
+        << ", B=" << b
+        << std::endl;
+
+    const bool is_valid =
+        (r == 1.0f) &&
+        (g == 0.0f) &&
+        (b == 0.0f);
+
+    std::cout << "Preprocessing color/layout validation: "
+        << (is_valid ? "PASSED" : "FAILED")
+        << std::endl;
+    std::cout << "-----------------------------------" << std::endl;
+
+    return is_valid;
+}
+
 
 /**
  * ============================================================================
@@ -465,8 +567,8 @@ std::vector<float> generate_embedding_from_image(
  * 3. Generate one real ArcFace embedding for each image.
  * 4. Compute cosine similarity between the two embeddings.
  *
- * Threshold-based same/different identity decisions should come after this
- * two-image pipeline is verified.
+ * Threshold-based same/different identity decisions are currently handled
+ * through FaceVerifier::verify_pair() using a temporary threshold.
  *
  * ============================================================================
  */
@@ -519,6 +621,10 @@ int main() {
      * ========================================================================
      */
     ImagePreprocessor preprocessor;
+    if (!validate_preprocessing_color_layout(preprocessor)) {
+        std::cerr << "[SYSTEM-ERROR] Preprocessing color/layout validation failed." << std::endl;
+        return -1;
+    }
 
     /**
      * ========================================================================
@@ -532,7 +638,7 @@ int main() {
      *
      * - generate_embedding()
      * - compute_similarity()
-	 * - verify_pair()
+     * - verify_pair()
      * ========================================================================
      */
     FaceVerifier verifier(
