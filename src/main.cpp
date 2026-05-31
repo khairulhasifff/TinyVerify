@@ -594,63 +594,72 @@ int main() {
     std::cout << "-----------------------------------" << std::endl;
 
     /**
- * ========================================================================
- * STAGE 1B — DEMO INPUT CONFIGURATION
- * ========================================================================
- *
- * Purpose:
- *
- * Define the current two-image verification demo inputs in one place.
- *
- * Architectural Reason:
- *
- * main.cpp is the orchestration layer.
- *
- * It should be responsible for choosing:
- * - which input images are used
- * - what labels appear in runtime logs
- * - what filename prefixes are used for debug artifacts
- *
- * However, those values should not be scattered directly inside function
- * calls throughout the pipeline.
- *
- * Keeping them as named constants makes the demo easier to read and easier
- * to change later.
- *
- * Current Demo Flow:
- *
- * image_a_path
- *     ↓
- * generate_embedding_from_image(...)
- *     ↓
- * embedding_a
- *
- * image_b_path
- *     ↓
- * generate_embedding_from_image(...)
- *     ↓
- * embedding_b
- *
- * embedding_a + embedding_b
- *     ↓
- * FaceVerifier::verify_pair(...)
- *     ↓
- * VerificationResult
- *
- * Future Direction:
- *
- * These constants can later be replaced by:
- * - command-line arguments
- * - config files
- * - batch evaluation inputs
- * - API request parameters
- *
- * Current State:
- *
- * Values are hardcoded intentionally because TinyVerify is still a focused
- * learning project and local demo pipeline.
- * ========================================================================
- */
+     * ========================================================================
+     * STAGE 1B — DEMO INPUT CONFIGURATION
+     * ========================================================================
+     *
+     * Purpose:
+     *
+     * Define the current two-image verification demo inputs in one place.
+     *
+     * Architectural Reason:
+     *
+     * main.cpp is the orchestration layer.
+     *
+     * It should be responsible for choosing:
+     * - which detector asset is used
+     * - which ArcFace ONNX model is used
+     * - which input images are used
+     * - what labels appear in runtime logs
+     * - what filename prefixes are used for debug artifacts
+     *
+     * However, those values should not be scattered directly inside function
+     * calls throughout the pipeline.
+     *
+     * Keeping them as named constants makes the demo easier to read and easier
+     * to change later.
+     *
+     * Current Demo Flow:
+     *
+     * image_a_path
+     *     ↓
+     * generate_embedding_from_image(...)
+     *     ↓
+     * embedding_a
+     *
+     * image_b_path
+     *     ↓
+     * generate_embedding_from_image(...)
+     *     ↓
+     * embedding_b
+     *
+     * embedding_a + embedding_b
+     *     ↓
+     * FaceVerifier::verify_pair(...)
+     *     ↓
+     * VerificationResult
+     *
+     * Future Direction:
+     *
+     * These constants can later be replaced by:
+     * - command-line arguments
+     * - config files
+     * - batch evaluation inputs
+     * - API request parameters
+     *
+     * Current State:
+     *
+     * Values are hardcoded intentionally because TinyVerify is still a focused
+     * learning project and local demo pipeline.
+     * ========================================================================
+     */
+
+    constexpr const char* cascade_path =
+        "data/haarcascade_frontalface_default.xml";
+
+    constexpr const char* arcface_model_path =
+        "models/arcface_buffalo_1.onnx";
+
     constexpr const char* image_a_path = "data/person_a.jpg";
     constexpr const char* image_b_path = "data/person_b.jpg";
 
@@ -673,7 +682,7 @@ int main() {
      * ========================================================================
      */
     FaceDetector detector(
-        "data/haarcascade_frontalface_default.xml"
+        cascade_path
     );
 
     /**
@@ -757,7 +766,7 @@ int main() {
      * ========================================================================
      */
     FaceVerifier verifier(
-        "models/arcface_buffalo_1.onnx"
+        arcface_model_path
     );
 
     /**
