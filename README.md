@@ -83,6 +83,7 @@ Verification Result
 | ArcFace embedding extraction | ✅ Complete |
 | Cosine similarity computation | ✅ Complete |
 | Two-image embedding comparison | ✅ Complete |
+| Temporary threshold-based verification result | ✅ Complete |
 | `verify_pair()` verification workflow | ⏳ Not implemented yet |
 | pybind11 Python bindings | ⏳ Planned / not importable yet |
 | Benchmarking | ⏳ Planned |
@@ -122,6 +123,8 @@ The current TinyVerify pipeline successfully performs:
 8. Real 512-dimensional embedding extraction for image A
 9. Real 512-dimensional embedding extraction for image B
 10. Cosine similarity computation between two real embeddings
+11. Temporary threshold comparison
+12. SAME / DIFFERENT identity result output
 
 The project currently outputs:
 - detected face visualizations for both input images
@@ -129,6 +132,8 @@ The project currently outputs:
 - preprocessed tensor-ready image buffers
 - real ArcFace embedding size confirmation for both images
 - cosine similarity score between two real ArcFace embeddings
+- temporary verification threshold
+- SAME / DIFFERENT identity result
 
 ---
 
@@ -207,21 +212,17 @@ Face crop
 Preprocessing
     ↓
 ArcFace embedding B
-
+    
 Embedding A + Embedding B
     ↓
 Cosine similarity score
+    ↓
+Temporary threshold comparison
+    ↓
+SAME / DIFFERENT identity result
 ```
 
-The next engineering step is:
-
-```text
-Choose temporary verification threshold
-    ↓
-Compare similarity score against threshold
-    ↓
-Return SAME / DIFFERENT identity result
-```
+The current threshold-based result is temporary and uncalibrated. The next engineering step is to move this decision logic into a dedicated `verify_pair()` workflow inside `FaceVerifier`.
 
 ---
 
@@ -229,8 +230,8 @@ Return SAME / DIFFERENT identity result
 
 The following parts are not yet complete or not fully validated:
 
-- Threshold-based verification has not been implemented or calibrated yet.
-- The current program prints a similarity score but does not yet return a final SAME / DIFFERENT decision.
+- Threshold-based verification is implemented temporarily in `main.cpp`, but the threshold has not been calibrated yet.
+- The current program prints a SAME / DIFFERENT decision, but the decision logic has not yet been moved into a dedicated `verify_pair()` workflow.
 - `verify_pair()` verification workflow is not implemented yet.
 - BGR → RGB preprocessing needs explicit validation.
 - Python bindings are not currently importable.
@@ -300,12 +301,14 @@ ArcFace embedding size: 512
 [Comparison]
 Cosine similarity: 0.9829
 Two-image cosine similarity: 0.9829
+Verification threshold: 0.6
+Verification result: SAME identity
 Program exited successfully with code 0.
 ```
 
-In this run, TinyVerify generated two real ArcFace embeddings and computed a cosine similarity score of `0.9829`.
+In this run, TinyVerify generated two real ArcFace embeddings, computed a cosine similarity score of `0.9829`, compared it against a temporary threshold of `0.6`, and returned `SAME identity`.
 
-A higher cosine similarity score means the two embeddings are more similar. However, TinyVerify does not yet return a final `SAME` or `DIFFERENT` identity decision because threshold-based verification has not been implemented yet.
+A higher cosine similarity score means the two embeddings are more similar. The current SAME / DIFFERENT result is only a prototype decision because the threshold has not yet been calibrated with a larger evaluation dataset.
 
 ---
 
@@ -343,7 +346,7 @@ This project is being used to learn:
 
 Planned future improvements include:
 
-- Threshold-based SAME / DIFFERENT verification decision
+- Move threshold-based SAME / DIFFERENT verification into `FaceVerifier::verify_pair()`
 - Cosine similarity threshold calibration
 - pybind11 Python bindings
 - Benchmarking against Python implementations

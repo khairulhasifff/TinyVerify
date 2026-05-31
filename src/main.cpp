@@ -630,11 +630,12 @@ int main() {
      * - Different identities should usually produce a lower score.
      *
      * Important:
+     * 
+     * This stage now applies a temporary, uncalibrated threshold to convert
+     * the cosine similarity score into a basic SAME / DIFFERENT identity result.
      *
-     * This is not yet a final verification decision.
-     * There is still no calibrated threshold here.
-     *
-     * This commit only validates that the two-image similarity path works.
+     * This is still not a production-grade verification decision because the
+     * threshold has not been calibrated with a real evaluation dataset.
      * ========================================================================
      */
     std::cout << std::endl;
@@ -643,8 +644,33 @@ int main() {
     float similarity =
         verifier.compute_similarity(embedding_a, embedding_b);
 
+    /**
+     * Temporary verification threshold.
+     *
+     * This value is not calibrated yet.
+     * It exists only to turn the current similarity score into a basic
+     * SAME / DIFFERENT identity decision for the current end-to-end prototype.
+     *
+     * Future work:
+     * - test more same-person image pairs
+     * - test more different-person image pairs
+     * - tune this threshold using real evaluation data
+     */
+    constexpr float verification_threshold = 0.60f;
+
+    const bool is_same_identity =
+        similarity >= verification_threshold;
+
     std::cout << "Two-image cosine similarity: "
         << similarity
+        << std::endl;
+
+    std::cout << "Verification threshold: "
+        << verification_threshold
+        << std::endl;
+
+    std::cout << "Verification result: "
+        << (is_same_identity ? "SAME identity" : "DIFFERENT identity")
         << std::endl;
 
     std::cout << "Program exited successfully with code 0." << std::endl;
