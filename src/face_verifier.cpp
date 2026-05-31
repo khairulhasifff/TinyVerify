@@ -118,23 +118,48 @@ std::vector<float> FaceVerifier::generate_embedding(
 )
 {
     /**
- * FaceVerifier owns ONNX Runtime tensor binding.
- *
- * main.cpp should not create Ort::MemoryInfo, Ort::Value, or know the
- * exact ONNX input shape. main.cpp only passes the preprocessed CHW float
- * buffer produced by ImagePreprocessor.
- *
- * Current model input contract:
- *
- * CHW float buffer
- *     ↓
- * Shape [1, 3, 112, 112]
- *     ↓
- * Ort::Value input tensor
- *     ↓
- * ArcFace ONNX Runtime inference
- */
+     * FaceVerifier owns ONNX Runtime tensor binding.
+     *
+     * main.cpp should not create Ort::MemoryInfo, Ort::Value, or know the
+     * exact ONNX input shape. main.cpp only passes the preprocessed CHW float
+     * buffer produced by ImagePreprocessor.
+     *
+     * Current model input contract:
+     *
+     * CHW float buffer
+     *     ↓
+     * Shape [1, 3, 112, 112]
+     *     ↓
+     * Ort::Value input tensor
+     *     ↓
+     * ArcFace ONNX Runtime inference
+     */
     const std::array<int64_t, 4> input_shape = { 1, 3, 112, 112 };
+
+    /**
+     * Architecture check:
+     *
+     * ImagePreprocessor owns resize, RGB conversion, normalization,
+     * and HWC-to-CHW conversion.
+     *
+     * FaceVerifier owns the ONNX Runtime inference boundary.
+     * Before creating an Ort::Value tensor, it should confirm that the
+     * incoming buffer matches ArcFace's required input shape:
+     *
+     * [1, 3, 112, 112] = 37632 floats
+     *
+     * This makes TinyVerify fail early with a clear error instead of failing
+     * later inside ONNX Runtime.
+     */
+    constexpr size_t EXPECTED_TENSOR_SIZE = 1 * 3 * 112 * 112;
+
+    if (input_tensor_data.size() != EXPECTED_TENSOR_SIZE)
+    {
+        throw std::runtime_error(
+            "Invalid ArcFace input tensor size. Expected 37632 floats, but received " +
+            std::to_string(input_tensor_data.size())
+        );
+    }
 
     Ort::MemoryInfo memory_info = Ort::MemoryInfo::CreateCpu(
         OrtArenaAllocator,

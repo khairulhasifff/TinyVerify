@@ -83,6 +83,7 @@ VerificationResult
 | ONNX Runtime session initialization | ✅ Complete |
 | ArcFace ONNX model loading | 🔄 Works when model file exists |
 | ONNX input tensor binding inside FaceVerifier | ✅ Complete |
+| ArcFace input tensor-size validation inside FaceVerifier | ✅ Complete |
 | Real ONNX Runtime inference execution | ✅ Complete |
 | ArcFace embedding extraction | ✅ Complete |
 | Cosine similarity computation | ✅ Complete |
@@ -164,6 +165,7 @@ The current inference layer supports:
 - ONNX Runtime session initialization
 - ArcFace ONNX model loading when the model file exists
 - ONNX input tensor binding inside `FaceVerifier`
+- ArcFace input tensor-size validation before ONNX Runtime tensor creation
 - real ONNX Runtime `session.Run(...)` execution inside `FaceVerifier`
 - ArcFace output tensor extraction
 - real 512-dimensional embedding generation
