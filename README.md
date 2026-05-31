@@ -307,7 +307,6 @@ ArcFace embedding size: 512
 -----------------------------------
 
 [Comparison]
-Cosine similarity: 0.9829
 Two-image cosine similarity: 0.9829
 Verification threshold: 0.6
 Verification result: SAME identity
