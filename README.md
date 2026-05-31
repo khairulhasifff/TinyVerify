@@ -1,4 +1,3 @@
-How about now?
 # TinyVerify
 
 TinyVerify is a C++ learning project focused on understanding 
@@ -243,16 +242,25 @@ The following parts are not yet complete or not fully validated:
 
 ## Example Runtime Output
 
+The example below shows TinyVerify processing two input images:
+
+- `data/person_a.jpg`
+- `data/person_b.jpg`
+
+For each image, TinyVerify detects a face, saves debug artifacts, preprocesses the cropped face, binds the tensor for ONNX Runtime inference, runs the ArcFace model, and extracts a 512-dimensional embedding.
+
+Finally, TinyVerify compares both embeddings using cosine similarity.
+
 ```text
 TinyVerify initialized successfully
 -----------------------------------
 FaceVerifier ONNX session loaded successfully
 Model path: models/arcface_buffalo_1.onnx
-Face detected successfully for: data/person_a.jpg
-x: 105
-y: 169
-width: 249
-height: 249
+
+[Image A]
+Input image: data/person_a.jpg
+Face detected successfully
+Bounding box: x=105, y=169, width=249, height=249
 Saved debug image: output/person_a_detected_face.jpg
 Saved cropped face: output/person_a_cropped_face.jpg
 Width: 112
@@ -260,19 +268,19 @@ Height: 112
 Min: 0.027451
 Max: 1
 Tensor size: 37632
-ONNX Input Tensor bound successfully!
-Tensor Type: Float32 | Shape: [1, 3, 112, 112]
+Preprocessed tensor shape: [1, 3, 112, 112]
+Tensor size: 37632
 ONNX Input Name: input.1
 ONNX Output Name: 683
 Real ONNX inference completed successfully
 Embedding size: 512
-Generated ArcFace embedding size: 512
+ArcFace embedding size: 512
 -----------------------------------
-Face detected successfully for: data/person_b.jpg
-x: 108
-y: 171
-width: 243
-height: 243
+
+[Image B]
+Input image: data/person_b.jpg
+Face detected successfully
+Bounding box: x=108, y=171, width=243, height=243
 Saved debug image: output/person_b_detected_face.jpg
 Saved cropped face: output/person_b_cropped_face.jpg
 Width: 112
@@ -280,19 +288,24 @@ Height: 112
 Min: 0.054902
 Max: 1
 Tensor size: 37632
-ONNX Input Tensor bound successfully!
-Tensor Type: Float32 | Shape: [1, 3, 112, 112]
+Preprocessed tensor shape: [1, 3, 112, 112]
+Tensor size: 37632
 ONNX Input Name: input.1
 ONNX Output Name: 683
 Real ONNX inference completed successfully
 Embedding size: 512
-Generated ArcFace embedding size: 512
+ArcFace embedding size: 512
 -----------------------------------
+
+[Comparison]
 Cosine similarity: 0.9829
 Two-image cosine similarity: 0.9829
-
-TinyVerify.exe exited with code 0.
+Program exited successfully with code 0.
 ```
+
+In this run, TinyVerify generated two real ArcFace embeddings and computed a cosine similarity score of `0.9829`.
+
+A higher cosine similarity score means the two embeddings are more similar. However, TinyVerify does not yet return a final `SAME` or `DIFFERENT` identity decision because threshold-based verification has not been implemented yet.
 
 ---
 

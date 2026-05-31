@@ -163,6 +163,7 @@
 std::vector<float> generate_embedding_from_image(
     const std::string& image_path,
     const std::string& debug_prefix,
+    const std::string& display_label,
     FaceDetector& detector,
     ImagePreprocessor& preprocessor,
     FaceVerifier& verifier,
@@ -184,6 +185,9 @@ std::vector<float> generate_embedding_from_image(
      * ========================================================================
      */
     cv::Mat input_image = cv::imread(image_path);
+    std::cout << std::endl;
+    std::cout << "[" << display_label << "]" << std::endl;
+    std::cout << "Input image: " << image_path << std::endl;
 
     /**
      * ========================================================================
@@ -294,14 +298,14 @@ std::vector<float> generate_embedding_from_image(
      * was detected.
      * ========================================================================
      */
-    std::cout << "Face detected successfully for: "
-        << image_path
-        << std::endl;
+    std::cout << "Face detected successfully" << std::endl;
 
-    std::cout << "x: " << face_box.x << std::endl;
-    std::cout << "y: " << face_box.y << std::endl;
-    std::cout << "width: " << face_box.width << std::endl;
-    std::cout << "height: " << face_box.height << std::endl;
+    std::cout << "Bounding box: "
+        << "x=" << face_box.x
+        << ", y=" << face_box.y
+        << ", width=" << face_box.width
+        << ", height=" << face_box.height
+        << std::endl;
 
     std::cout << "Saved debug image: "
         << detected_output
@@ -390,8 +394,8 @@ std::vector<float> generate_embedding_from_image(
         input_shape.size()
     );
 
-    std::cout << "ONNX Input Tensor bound successfully!" << std::endl;
-    std::cout << "Tensor Type: Float32 | Shape: [1, 3, 112, 112]" << std::endl;
+    std::cout << "Preprocessed tensor shape: [1, 3, 112, 112]" << std::endl;
+    std::cout << "Tensor size: " << model_input.size() << std::endl;
 
     /**
      * ========================================================================
@@ -414,7 +418,7 @@ std::vector<float> generate_embedding_from_image(
     std::vector<float> embedding =
         verifier.generate_embedding(input_tensor);
 
-    std::cout << "Generated ArcFace embedding size: "
+    std::cout << "ArcFace embedding size: "
         << embedding.size()
         << std::endl;
 
@@ -467,7 +471,7 @@ int main() {
 
     /**
      * ========================================================================
-     * STAGE 1 — OPENVC LOG CONFIGURATION
+     * STAGE 1 — OPENCV LOG CONFIGURATION
      * ========================================================================
      *
      * Framework:
@@ -566,6 +570,7 @@ int main() {
         generate_embedding_from_image(
             "data/person_a.jpg",
             "person_a",
+            "Image A",
             detector,
             preprocessor,
             verifier,
@@ -595,6 +600,7 @@ int main() {
         generate_embedding_from_image(
             "data/person_b.jpg",
             "person_b",
+            "Image B",
             detector,
             preprocessor,
             verifier,
@@ -631,12 +637,17 @@ int main() {
      * This commit only validates that the two-image similarity path works.
      * ========================================================================
      */
+    std::cout << std::endl;
+    std::cout << "[Comparison]" << std::endl;
+
     float similarity =
         verifier.compute_similarity(embedding_a, embedding_b);
 
     std::cout << "Two-image cosine similarity: "
         << similarity
         << std::endl;
+
+    std::cout << "Program exited successfully with code 0." << std::endl;
 
     /**
      * ========================================================================
