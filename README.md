@@ -1,3 +1,4 @@
+How about now?
 # TinyVerify
 
 TinyVerify is a C++ learning project focused on understanding 
@@ -64,7 +65,7 @@ Verification Result
 | Component | Status |
 |---|---|
 | Image loading (OpenCV) | ✅ Complete |
-| Image preprocessing pipeline | 🔄 Implemented, needs validation |
+| Image preprocessing pipeline | ✅ Working, needs controlled validation |
 | Resize to 112x112 | ✅ Complete |
 | BGR → RGB conversion | 🔄 Implemented, not independently verified |
 | Pixel normalization | ✅ Complete |
@@ -81,7 +82,8 @@ Verification Result
 | ONNX input tensor binding | ✅ Complete |
 | Real ONNX Runtime inference execution | ✅ Complete |
 | ArcFace embedding extraction | ✅ Complete |
-| Cosine similarity computation | ✅ Complete (self-similarity validated) |
+| Cosine similarity computation | ✅ Complete |
+| Two-image embedding comparison | ✅ Complete |
 | `verify_pair()` verification workflow | ⏳ Not implemented yet |
 | pybind11 Python bindings | ⏳ Planned / not importable yet |
 | Benchmarking | ⏳ Planned |
@@ -118,15 +120,16 @@ The current TinyVerify pipeline successfully performs:
 5. CHW tensor buffer preparation for ONNX Runtime inference
 6. ONNX Runtime input tensor binding
 7. ArcFace inference execution
-8. Real 512-dimensional embedding extraction
-9. Cosine similarity computation
+8. Real 512-dimensional embedding extraction for image A
+9. Real 512-dimensional embedding extraction for image B
+10. Cosine similarity computation between two real embeddings
 
 The project currently outputs:
-- detected face visualization
-- cropped face artifacts
+- detected face visualizations for both input images
+- cropped face artifacts for both input images
 - preprocessed tensor-ready image buffers
-- real ArcFace embedding size confirmation
-- cosine similarity scores
+- real ArcFace embedding size confirmation for both images
+- cosine similarity score between two real ArcFace embeddings
 
 ---
 
@@ -183,20 +186,42 @@ Real 512-dimensional embedding generation
 Cosine similarity computation
 ```
 
+The current verified two-image comparison pipeline is:
+
+```text
+Image A
+    ↓
+Face detection
+    ↓
+Face crop
+    ↓
+Preprocessing
+    ↓
+ArcFace embedding A
+
+Image B
+    ↓
+Face detection
+    ↓
+Face crop
+    ↓
+Preprocessing
+    ↓
+ArcFace embedding B
+
+Embedding A + Embedding B
+    ↓
+Cosine similarity score
+```
+
 The next engineering step is:
 
 ```text
-Generate embedding for image A
+Choose temporary verification threshold
     ↓
-Generate embedding for image B
+Compare similarity score against threshold
     ↓
-Compute cosine similarity between real embeddings
-    ↓
-Validate similarity scores
-    ↓
-Apply verification threshold
-    ↓
-Return verification result
+Return SAME / DIFFERENT identity result
 ```
 
 ---
@@ -205,15 +230,14 @@ Return verification result
 
 The following parts are not yet complete or not fully validated:
 
-- End-to-end two-image verification has not been validated yet.
-- Cosine similarity is implemented and validated using self-comparison, but still needs validation using real image pairs.
 - Threshold-based verification has not been implemented or calibrated yet.
+- The current program prints a similarity score but does not yet return a final SAME / DIFFERENT decision.
 - `verify_pair()` verification workflow is not implemented yet.
 - BGR → RGB preprocessing needs explicit validation.
 - Python bindings are not currently importable.
 - Benchmarking scripts are not implemented yet.
 - IC card / MyKad document scanning has not started.
-- Real sample images are still needed for testing.
+- A larger real sample image dataset is still needed for testing.
 
 ---
 
@@ -222,32 +246,52 @@ The following parts are not yet complete or not fully validated:
 ```text
 TinyVerify initialized successfully
 -----------------------------------
-Face detected successfully
+FaceVerifier ONNX session loaded successfully
+Model path: models/arcface_buffalo_1.onnx
+Face detected successfully for: data/person_a.jpg
 x: 105
 y: 169
 width: 249
 height: 249
-Saved debug image: output/detected_face.jpg
-Saved cropped face: output/cropped_face.jpg
+Saved debug image: output/person_a_detected_face.jpg
+Saved cropped face: output/person_a_cropped_face.jpg
 Width: 112
 Height: 112
-Min: 0
+Min: 0.027451
 Max: 1
 Tensor size: 37632
------------------------------------
-Preprocessing completed
-FaceVerifier ONNX session loaded successfully
-Model path: models/arcface_buffalo_1.onnx
 ONNX Input Tensor bound successfully!
 Tensor Type: Float32 | Shape: [1, 3, 112, 112]
------------------------------------
 ONNX Input Name: input.1
 ONNX Output Name: 683
 Real ONNX inference completed successfully
 Embedding size: 512
 Generated ArcFace embedding size: 512
-Cosine similarity: 1
-Self similarity score: 1
+-----------------------------------
+Face detected successfully for: data/person_b.jpg
+x: 108
+y: 171
+width: 243
+height: 243
+Saved debug image: output/person_b_detected_face.jpg
+Saved cropped face: output/person_b_cropped_face.jpg
+Width: 112
+Height: 112
+Min: 0.054902
+Max: 1
+Tensor size: 37632
+ONNX Input Tensor bound successfully!
+Tensor Type: Float32 | Shape: [1, 3, 112, 112]
+ONNX Input Name: input.1
+ONNX Output Name: 683
+Real ONNX inference completed successfully
+Embedding size: 512
+Generated ArcFace embedding size: 512
+-----------------------------------
+Cosine similarity: 0.9829
+Two-image cosine similarity: 0.9829
+
+TinyVerify.exe exited with code 0.
 ```
 
 ---
@@ -286,8 +330,8 @@ This project is being used to learn:
 
 Planned future improvements include:
 
-- Two-image ArcFace embedding comparison
-- Cosine similarity verification and threshold calibration
+- Threshold-based SAME / DIFFERENT verification decision
+- Cosine similarity threshold calibration
 - pybind11 Python bindings
 - Benchmarking against Python implementations
 - Lightweight web-based demonstration interface
