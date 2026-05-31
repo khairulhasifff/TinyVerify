@@ -3,6 +3,7 @@
 #include <iostream>
 #include <stdexcept>
 #include <cmath>
+#include <array>
 
 /**
  * ============================================================================
@@ -112,8 +113,42 @@ FaceVerifier::FaceVerifier(const std::string& model_path)
  *
  * ============================================================================
  */
-std::vector<float> FaceVerifier::generate_embedding(const Ort::Value& input_tensor)
+std::vector<float> FaceVerifier::generate_embedding(
+    const std::vector<float>& input_tensor_data
+)
 {
+    /**
+ * FaceVerifier owns ONNX Runtime tensor binding.
+ *
+ * main.cpp should not create Ort::MemoryInfo, Ort::Value, or know the
+ * exact ONNX input shape. main.cpp only passes the preprocessed CHW float
+ * buffer produced by ImagePreprocessor.
+ *
+ * Current model input contract:
+ *
+ * CHW float buffer
+ *     ↓
+ * Shape [1, 3, 112, 112]
+ *     ↓
+ * Ort::Value input tensor
+ *     ↓
+ * ArcFace ONNX Runtime inference
+ */
+    const std::array<int64_t, 4> input_shape = { 1, 3, 112, 112 };
+
+    Ort::MemoryInfo memory_info = Ort::MemoryInfo::CreateCpu(
+        OrtArenaAllocator,
+        OrtMemTypeDefault
+    );
+
+    Ort::Value input_tensor = Ort::Value::CreateTensor<float>(
+        memory_info,
+        const_cast<float*>(input_tensor_data.data()),
+        input_tensor_data.size(),
+        input_shape.data(),
+        input_shape.size()
+    );
+
     /**
      * ONNX Runtime uses model input/output node names to connect user-provided
      * tensors to the loaded neural network graph.

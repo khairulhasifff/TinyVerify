@@ -5,8 +5,6 @@
 #include <opencv2/opencv.hpp>
 #include <opencv2/core/utils/logger.hpp>
 
-#include <onnxruntime_cxx_api.h>
-
 #include "image_preprocessor.h"
 #include "face_detector.h"
 #include "face_verifier.h"
@@ -25,10 +23,9 @@
  * - OpenCV image loading
  * - OpenCV / Haar Cascade face detection
  * - face cropping
- * - ImagePreprocessor tensor preparation
- * - ONNX Runtime tensor binding
- * - ArcFace ONNX inference
- * - embedding extraction
+ * - ImagePreprocessor tensor buffer preparation
+ * - FaceVerifier embedding generation
+ * - ArcFace ONNX inference through FaceVerifier
  * - verification result reporting
  *
  * Current Engineering Goal:
@@ -67,7 +64,8 @@
  *   image cropping, and saving debug output images.
  *
  * - ONNX Runtime:
- *   Used to create input tensors and execute the ArcFace ONNX model.
+ *   Used indirectly through FaceVerifier to create input tensors and execute
+ *   the ArcFace ONNX model.
  *
  * - ArcFace:
  *   Deep face-recognition model that converts a face image into a
@@ -95,8 +93,8 @@
   * both person_a.jpg and person_b.jpg.
   *
   * Without this helper, main() would need to duplicate the same image loading,
-  * face detection, cropping, preprocessing, tensor binding, and inference code
-  * twice.
+ * face detection, cropping, preprocessing, and embedding generation code
+ * twice.
   *
   * Full Internal Flow:
   *
@@ -118,13 +116,13 @@
   *     ↓
   * ImagePreprocessor::preprocess
   *     ↓
-  * CHW float tensor buffer
-  *     ↓
-  * Ort::Value input tensor
-  *     ↓
-  * FaceVerifier::generate_embedding
-  *     ↓
-  * 512-dimensional ArcFace embedding
+ * CHW float tensor buffer
+ *     ↓
+ * FaceVerifier::generate_embedding
+ *     ↓
+ * ONNX Runtime tensor binding inside FaceVerifier
+ *     ↓
+ * 512-dimensional ArcFace embedding
   *
   * Parameters:
   *
@@ -146,8 +144,6 @@
   * verifier:
   *     Existing FaceVerifier instance holding the ArcFace ONNX Runtime session.
   *
-  * memory_info:
-  *     ONNX Runtime CPU memory descriptor used when creating input tensors.
   *
   * Return:
   *
@@ -168,8 +164,7 @@ std::vector<float> process_image_to_embedding(
     const std::string& display_label,
     FaceDetector& detector,
     ImagePreprocessor& preprocessor,
-    FaceVerifier& verifier,
-    const Ort::MemoryInfo& memory_info
+    FaceVerifier& verifier
 ) {
     /**
      * ========================================================================
@@ -350,11 +345,14 @@ std::vector<float> process_image_to_embedding(
 
     /**
      * ========================================================================
-     * STAGE A9 — ONNX INPUT SHAPE DECLARATION
+     * STAGE A9 — PREPROCESSED TENSOR BUFFER SUMMARY
      * ========================================================================
      *
      * Framework:
-     * ONNX Runtime
+     * TinyVerify orchestration logging
+     * 
+     * Purpose:
+     * Print the model input contract expected by FaceVerifier.
      *
      * ArcFace Buffalo expects input shape:
      *
@@ -369,39 +367,47 @@ std::vector<float> process_image_to_embedding(
      * - 112 pixel width
      * ========================================================================
      */
-    std::vector<int64_t> input_shape = { 1, 3, 112, 112 };
-
-    /**
-     * ========================================================================
-     * STAGE A10 — ONNX RUNTIME TENSOR BINDING
-     * ========================================================================
-     *
-     * Framework:
-     * ONNX Runtime C++ API
-     *
-     * Ort::Value::CreateTensor does not copy the data.
-     * It wraps the existing model_input vector memory.
-     *
-     * Important:
-     * model_input must remain alive while generate_embedding() runs.
-     * That is true here because model_input exists in this function scope
-     * until after inference completes.
-     * ========================================================================
-     */
-    Ort::Value input_tensor = Ort::Value::CreateTensor<float>(
-        memory_info,
-        model_input.data(),
-        model_input.size(),
-        input_shape.data(),
-        input_shape.size()
-    );
-
     std::cout << "Preprocessed tensor shape: [1, 3, 112, 112]" << std::endl;
     std::cout << "Tensor size: " << model_input.size() << std::endl;
 
     /**
      * ========================================================================
-     * STAGE A11 — ARCFACE ONNX INFERENCE
+     * STAGE A10 — ARCFACE EMBEDDING GENERATION
+     * ========================================================================
+     *
+     * Architecture:
+     *
+     * main.cpp remains the orchestration layer.
+     *
+     * It does not create ONNX Runtime tensors directly.
+     * Instead, it passes the preprocessed CHW float buffer to FaceVerifier.
+     *
+     * FaceVerifier owns:
+     * - ONNX Runtime memory descriptor creation
+     * - Ort::Value tensor creation
+     * - ONNX input/output binding
+     * - session_.Run(...)
+     * - embedding extraction
+     *
+     * Current Flow:
+     *
+     * CHW float tensor buffer
+     *     ↓
+     * FaceVerifier::generate_embedding(...)
+     *     ↓
+     * ONNX Runtime tensor binding
+     *     ↓
+     * ArcFace inference
+     *     ↓
+     * 512-dimensional embedding
+     * ========================================================================
+     */
+    std::vector<float> embedding =
+        verifier.generate_embedding(model_input);
+
+    /**
+     * ========================================================================
+     * STAGE A11 — EMBEDDING OUTPUT LOGGING
      * ========================================================================
      *
      * Framework:
@@ -417,9 +423,6 @@ std::vector<float> process_image_to_embedding(
      * 512-dimensional ArcFace embedding.
      * ========================================================================
      */
-    std::vector<float> embedding =
-        verifier.generate_embedding(input_tensor);
-
     std::cout << "ArcFace embedding size: "
         << embedding.size()
         << std::endl;
@@ -771,23 +774,6 @@ int main() {
 
     /**
      * ========================================================================
-     * STAGE 5 — ONNX RUNTIME MEMORY DESCRIPTOR
-     * ========================================================================
-     *
-     * Framework:
-     * ONNX Runtime
-     *
-     * This tells ONNX Runtime that the input tensor data lives in normal CPU
-     * memory.
-     * ========================================================================
-     */
-    auto memory_info = Ort::MemoryInfo::CreateCpu(
-        OrtDeviceAllocator,
-        OrtMemTypeCPU
-    );
-
-    /**
-     * ========================================================================
      * STAGE 6 — GENERATE EMBEDDING A
      * ========================================================================
      *
@@ -807,8 +793,7 @@ int main() {
             image_a_label,
             detector,
             preprocessor,
-            verifier,
-            memory_info
+            verifier
         );
 
     if (embedding_a.empty()) {
@@ -837,8 +822,7 @@ int main() {
             image_b_label,
             detector,
             preprocessor,
-            verifier,
-            memory_info
+            verifier
         );
 
     if (embedding_b.empty()) {

@@ -115,15 +115,34 @@ public:
     FaceVerifier(const std::string& model_path);
 
     /**
-     * @brief Generate embedding vector from preprocessed tensor
+     * @brief Generate embedding vector from a preprocessed tensor buffer
      *
-     * Input:
-     * - normalized CHW ONNX Runtime tensor
+     * Architecture responsibility:
+     *
+     * ImagePreprocessor owns:
+     * - cropped face image
+     * - resize to 112x112
+     * - BGR to RGB conversion
+     * - normalization to float [0.0, 1.0]
+     * - HWC to CHW layout conversion
+     *
+     * FaceVerifier owns:
+     * - ONNX Runtime memory descriptor creation
+     * - ONNX Runtime input tensor creation
+     * - ONNX input/output name binding
+     * - ArcFace ONNX inference execution
+     * - output tensor extraction into a C++ embedding vector
+     *
+     * Expected input:
+     * - flat std::vector<float>
+     * - shape: [1, 3, 112, 112]
+     * - layout: CHW / NCHW-compatible
+     * - values: normalized float [0.0, 1.0]
      *
      * Output:
-     * - ArcFace facial embedding vector
+     * - ArcFace facial embedding vector, normally 512 floats
      */
-    std::vector<float> generate_embedding(const Ort::Value& input_tensor);
+    std::vector<float> generate_embedding(const std::vector<float>& input_tensor_data);
 
     /**
      * @brief Compare two facial embeddings
