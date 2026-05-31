@@ -263,6 +263,19 @@ Finally, TinyVerify compares both embeddings through `FaceVerifier::verify_pair(
 ```text
 TinyVerify initialized successfully
 -----------------------------------
+Width: 112
+Height: 112
+Min: 0
+Max: 1
+Tensor size: 37632
+
+[Preprocessing Validation]
+Controlled input: OpenCV BGR red pixel cv::Scalar(0, 0, 255)
+Expected RGB CHW first pixel: R=1, G=0, B=0
+Observed RGB CHW first pixel: R=1, G=0, B=0
+Preprocessing color/layout validation: PASSED
+-----------------------------------
+
 FaceVerifier ONNX session loaded successfully
 Model path: models/arcface_buffalo_1.onnx
 
