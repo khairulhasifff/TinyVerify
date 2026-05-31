@@ -594,6 +594,73 @@ int main() {
     std::cout << "-----------------------------------" << std::endl;
 
     /**
+ * ========================================================================
+ * STAGE 1B — DEMO INPUT CONFIGURATION
+ * ========================================================================
+ *
+ * Purpose:
+ *
+ * Define the current two-image verification demo inputs in one place.
+ *
+ * Architectural Reason:
+ *
+ * main.cpp is the orchestration layer.
+ *
+ * It should be responsible for choosing:
+ * - which input images are used
+ * - what labels appear in runtime logs
+ * - what filename prefixes are used for debug artifacts
+ *
+ * However, those values should not be scattered directly inside function
+ * calls throughout the pipeline.
+ *
+ * Keeping them as named constants makes the demo easier to read and easier
+ * to change later.
+ *
+ * Current Demo Flow:
+ *
+ * image_a_path
+ *     ↓
+ * generate_embedding_from_image(...)
+ *     ↓
+ * embedding_a
+ *
+ * image_b_path
+ *     ↓
+ * generate_embedding_from_image(...)
+ *     ↓
+ * embedding_b
+ *
+ * embedding_a + embedding_b
+ *     ↓
+ * FaceVerifier::verify_pair(...)
+ *     ↓
+ * VerificationResult
+ *
+ * Future Direction:
+ *
+ * These constants can later be replaced by:
+ * - command-line arguments
+ * - config files
+ * - batch evaluation inputs
+ * - API request parameters
+ *
+ * Current State:
+ *
+ * Values are hardcoded intentionally because TinyVerify is still a focused
+ * learning project and local demo pipeline.
+ * ========================================================================
+ */
+    constexpr const char* image_a_path = "data/person_a.jpg";
+    constexpr const char* image_b_path = "data/person_b.jpg";
+
+    constexpr const char* image_a_debug_prefix = "person_a";
+    constexpr const char* image_b_debug_prefix = "person_b";
+
+    constexpr const char* image_a_label = "Image A";
+    constexpr const char* image_b_label = "Image B";
+
+    /**
      * ========================================================================
      * STAGE 2 — FACE DETECTOR INITIALIZATION
      * ========================================================================
@@ -726,9 +793,9 @@ int main() {
      */
     std::vector<float> embedding_a =
         generate_embedding_from_image(
-            "data/person_a.jpg",
-            "person_a",
-            "Image A",
+            image_a_path,
+            image_a_debug_prefix,
+            image_a_label,
             detector,
             preprocessor,
             verifier,
@@ -756,9 +823,9 @@ int main() {
      */
     std::vector<float> embedding_b =
         generate_embedding_from_image(
-            "data/person_b.jpg",
-            "person_b",
-            "Image B",
+            image_b_path,
+            image_b_debug_prefix,
+            image_b_label,
             detector,
             preprocessor,
             verifier,
