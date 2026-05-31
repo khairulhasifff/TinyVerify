@@ -621,9 +621,57 @@ int main() {
      * ========================================================================
      */
     ImagePreprocessor preprocessor;
-    if (!validate_preprocessing_color_layout(preprocessor)) {
-        std::cerr << "[SYSTEM-ERROR] Preprocessing color/layout validation failed." << std::endl;
-        return -1;
+
+    /**
+     * ========================================================================
+     * STAGE 3B — OPTIONAL PREPROCESSING VALIDATION
+     * ========================================================================
+     *
+     * Purpose:
+     *
+     * Run a controlled sanity check for preprocessing correctness before the
+     * real face verification pipeline starts.
+     *
+     * Architectural Reason:
+     *
+     * ImagePreprocessor is responsible for enforcing the model input contract:
+     *
+     * OpenCV BGR image
+     *     ↓
+     * Resize to 112x112
+     *     ↓
+     * BGR → RGB conversion
+     *     ↓
+     * Normalize to float [0.0, 1.0]
+     *     ↓
+     * HWC → CHW tensor layout
+     *
+     * This validation confirms that the preprocessing layer produces the
+     * expected RGB CHW tensor values for a controlled input image.
+     *
+     * Why This Is Gated:
+     *
+     * Validation is useful during development, but it should not be treated as
+     * a required part of normal verification inference forever.
+     *
+     * Keeping it behind a flag makes the behavior explicit:
+     *
+     * - true  → run preprocessing validation before inference
+     * - false → skip validation and run the verification pipeline directly
+     *
+     * Current State:
+     *
+     * The flag is intentionally set to true while TinyVerify is still in
+     * learning/debug mode.
+     * ========================================================================
+     */
+    constexpr bool run_preprocessing_validation = true;
+
+    if (run_preprocessing_validation) {
+        if (!validate_preprocessing_color_layout(preprocessor)) {
+            std::cerr << "[SYSTEM-ERROR] Preprocessing color/layout validation failed." << std::endl;
+            return -1;
+        }
     }
 
     /**
