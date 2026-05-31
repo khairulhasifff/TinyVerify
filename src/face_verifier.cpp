@@ -280,10 +280,6 @@ float FaceVerifier::compute_similarity(
         dot_product /
         (std::sqrt(norm_a) * std::sqrt(norm_b));
 
-    std::cout << "Cosine similarity: "
-        << similarity
-        << std::endl;
-
     return similarity;
 }
 
