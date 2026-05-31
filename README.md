@@ -275,7 +275,6 @@ Expected RGB CHW first pixel: R=1, G=0, B=0
 Observed RGB CHW first pixel: R=1, G=0, B=0
 Preprocessing color/layout validation: PASSED
 -----------------------------------
-
 FaceVerifier ONNX session loaded successfully
 Model path: models/arcface_buffalo_1.onnx
 
@@ -285,11 +284,6 @@ Face detected successfully
 Bounding box: x=105, y=169, width=249, height=249
 Saved debug image: output/person_a_detected_face.jpg
 Saved cropped face: output/person_a_cropped_face.jpg
-Width: 112
-Height: 112
-Min: 0.027451
-Max: 1
-Tensor size: 37632
 Preprocessed tensor shape: [1, 3, 112, 112]
 Tensor size: 37632
 ONNX Input Name: input.1
@@ -305,11 +299,6 @@ Face detected successfully
 Bounding box: x=108, y=171, width=243, height=243
 Saved debug image: output/person_b_detected_face.jpg
 Saved cropped face: output/person_b_cropped_face.jpg
-Width: 112
-Height: 112
-Min: 0.054902
-Max: 1
-Tensor size: 37632
 Preprocessed tensor shape: [1, 3, 112, 112]
 Tensor size: 37632
 ONNX Input Name: input.1
