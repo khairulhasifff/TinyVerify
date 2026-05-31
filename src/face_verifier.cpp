@@ -253,7 +253,7 @@ std::vector<float> FaceVerifier::generate_embedding(const Ort::Value& input_tens
 float FaceVerifier::compute_similarity(
     const std::vector<float>& embedding_a,
     const std::vector<float>& embedding_b
-) {
+) const {
     if (embedding_a.empty() || embedding_b.empty()) {
         throw std::runtime_error("Cannot compute similarity: embedding is empty.");
     }
@@ -285,4 +285,83 @@ float FaceVerifier::compute_similarity(
         << std::endl;
 
     return similarity;
+}
+
+/**
+ * ============================================================================
+ * VERIFICATION DECISION WORKFLOW
+ * ============================================================================
+ *
+ * Current Verification Flow:
+ *
+ * Embedding A
+ *     ↓
+ * Embedding B
+ *     ↓
+ * Cosine Similarity
+ *     ↓
+ * Temporary Threshold Comparison
+ *     ↓
+ * SAME / DIFFERENT Identity Decision
+ *     ↓
+ * VerificationResult
+ *
+ * Architectural Purpose:
+ *
+ * This function moves the verification decision out of main.cpp and into the
+ * FaceVerifier module.
+ *
+ * main.cpp should orchestrate the demo pipeline.
+ *
+ * FaceVerifier should own:
+ *
+ * - embedding comparison
+ * - similarity scoring
+ * - threshold-based verification decision
+ *
+ * Why This Matters:
+ *
+ * In a cleaner verification architecture, the application layer should not need
+ * to know how identity decisions are made.
+ *
+ * Instead, it should call:
+ *
+ * verifier.verify_pair(...)
+ *
+ * and receive a structured result containing:
+ *
+ * - similarity score
+ * - threshold used
+ * - final identity decision
+ *
+ * Current Limitation:
+ *
+ * The threshold is still temporary and uncalibrated.
+ *
+ * This method improves structure, but it does not make the verification result
+ * production-grade yet.
+ *
+ * Future Work:
+ *
+ * - calibrate threshold using real evaluation data
+ * - test same-person and different-person image pairs
+ * - add evaluation metrics
+ * - move toward confidence reporting
+ *
+ * ============================================================================
+ */
+VerificationResult FaceVerifier::verify_pair(
+    const std::vector<float>& embedding_a,
+    const std::vector<float>& embedding_b,
+    float threshold
+) const {
+    const float similarity =
+        compute_similarity(embedding_a, embedding_b);
+
+    VerificationResult result;
+    result.similarity = similarity;
+    result.threshold = threshold;
+    result.is_same_identity = similarity >= threshold;
+
+    return result;
 }

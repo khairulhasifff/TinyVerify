@@ -29,7 +29,7 @@
  * - ONNX Runtime tensor binding
  * - ArcFace ONNX inference
  * - embedding extraction
- * - cosine similarity comparison
+ * - verification result reporting
  *
  * Current Engineering Goal:
  *
@@ -56,7 +56,9 @@
  *
  * embedding A + embedding B
  *     ↓
- * cosine similarity
+ * FaceVerifier::verify_pair(...)
+ *     ↓
+ * VerificationResult
  *
  * Frameworks Used:
  *
@@ -74,7 +76,7 @@
  * - TinyVerify custom modules:
  *   FaceDetector       → detects and crops faces
  *   ImagePreprocessor  → converts cropped face image into CHW float tensor
- *   FaceVerifier       → runs ONNX inference and computes cosine similarity
+ *   FaceVerifier       → runs ONNX inference, compares embeddings, and returns a verification result
  *
  * ============================================================================
  */
@@ -453,7 +455,8 @@ std::vector<float> generate_embedding_from_image(
  *
  * Important:
  *
- * This stage does not apply a final verification threshold yet.
+ * This stage applies a temporary verification threshold through
+ * FaceVerifier::verify_pair().
  *
  * The current purpose is only to prove that TinyVerify can:
  *
@@ -529,6 +532,7 @@ int main() {
      *
      * - generate_embedding()
      * - compute_similarity()
+	 * - verify_pair()
      * ========================================================================
      */
     FaceVerifier verifier(
@@ -614,15 +618,21 @@ int main() {
 
     /**
      * ========================================================================
-     * STAGE 8 — TWO-IMAGE COSINE SIMILARITY
+     * STAGE 8 — TWO-IMAGE VERIFICATION DECISION
      * ========================================================================
      *
      * Framework:
-     * TinyVerify FaceVerifier math layer
+     * TinyVerify FaceVerifier verification layer
      *
-     * This compares two real ArcFace embeddings:
+     * This delegates two-image verification to FaceVerifier:
      *
-     * similarity = dot(A, B) / (norm(A) * norm(B))
+     * embedding_a
+     *     ↓
+     * embedding_b
+     *     ↓
+     * FaceVerifier::verify_pair(...)
+     *     ↓
+     * VerificationResult
      *
      * Expected behavior:
      *
@@ -641,37 +651,32 @@ int main() {
     std::cout << std::endl;
     std::cout << "[Comparison]" << std::endl;
 
-    float similarity =
-        verifier.compute_similarity(embedding_a, embedding_b);
-
     /**
-     * Temporary verification threshold.
+     * FaceVerifier now owns the verification decision workflow.
      *
-     * This value is not calibrated yet.
-     * It exists only to turn the current similarity score into a basic
-     * SAME / DIFFERENT identity decision for the current end-to-end prototype.
+     * main.cpp no longer directly applies:
      *
-     * Future work:
-     * - test more same-person image pairs
-     * - test more different-person image pairs
-     * - tune this threshold using real evaluation data
+     * similarity >= verification_threshold
+     *
+     * Instead, main.cpp asks FaceVerifier to verify the pair and then prints the
+     * structured VerificationResult.
      */
-    constexpr float verification_threshold = 0.60f;
-
-    const bool is_same_identity =
-        similarity >= verification_threshold;
+    VerificationResult result =
+        verifier.verify_pair(embedding_a, embedding_b);
 
     std::cout << "Two-image cosine similarity: "
-        << similarity
+        << result.similarity
         << std::endl;
 
     std::cout << "Verification threshold: "
-        << verification_threshold
+        << result.threshold
         << std::endl;
 
     std::cout << "Verification result: "
-        << (is_same_identity ? "SAME identity" : "DIFFERENT identity")
+        << (result.is_same_identity ? "SAME identity" : "DIFFERENT identity")
         << std::endl;
+
+    std::cout << "Program exited successfully with code 0." << std::endl;
 
     /**
      * ========================================================================

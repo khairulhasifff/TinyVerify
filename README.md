@@ -84,7 +84,7 @@ Verification Result
 | Cosine similarity computation | ✅ Complete |
 | Two-image embedding comparison | ✅ Complete |
 | Temporary threshold-based verification result | ✅ Complete |
-| `verify_pair()` verification workflow | ⏳ Not implemented yet |
+| `verify_pair()` verification workflow | ✅ Complete |
 | pybind11 Python bindings | ⏳ Planned / not importable yet |
 | Benchmarking | ⏳ Planned |
 | IC card / MyKad document scanner | ⏳ Not started |
@@ -153,6 +153,8 @@ The current inference layer supports:
 - ArcFace output tensor extraction
 - real 512-dimensional embedding generation
 - cosine similarity computation
+- temporary threshold-based verification through `FaceVerifier::verify_pair()`
+- structured `VerificationResult` output
 
 Current embedding behavior now uses real ONNX Runtime inference. A preprocessed
 CHW float tensor is bound to an ONNX Runtime input tensor, executed through the
@@ -188,6 +190,10 @@ ArcFace output tensor extraction
 Real 512-dimensional embedding generation
     ↓
 Cosine similarity computation
+    ↓
+FaceVerifier::verify_pair(...)
+    ↓
+VerificationResult
 ```
 
 The current verified two-image comparison pipeline is:
@@ -215,14 +221,18 @@ ArcFace embedding B
     
 Embedding A + Embedding B
     ↓
+FaceVerifier::verify_pair(...)
+    ↓
 Cosine similarity score
     ↓
 Temporary threshold comparison
     ↓
+VerificationResult
+    ↓
 SAME / DIFFERENT identity result
 ```
 
-The current threshold-based result is temporary and uncalibrated. The next engineering step is to move this decision logic into a dedicated `verify_pair()` workflow inside `FaceVerifier`.
+The current threshold-based result is temporary and uncalibrated, but the decision logic has now been moved into a dedicated `FaceVerifier::verify_pair()` workflow.
 
 ---
 
@@ -230,9 +240,7 @@ The current threshold-based result is temporary and uncalibrated. The next engin
 
 The following parts are not yet complete or not fully validated:
 
-- Threshold-based verification is implemented temporarily in `main.cpp`, but the threshold has not been calibrated yet.
-- The current program prints a SAME / DIFFERENT decision, but the decision logic has not yet been moved into a dedicated `verify_pair()` workflow.
-- `verify_pair()` verification workflow is not implemented yet.
+- Threshold-based verification now lives in `FaceVerifier::verify_pair()`, but the threshold is still temporary and uncalibrated.
 - BGR → RGB preprocessing needs explicit validation.
 - Python bindings are not currently importable.
 - Benchmarking scripts are not implemented yet.
@@ -250,7 +258,7 @@ The example below shows TinyVerify processing two input images:
 
 For each image, TinyVerify detects a face, saves debug artifacts, preprocesses the cropped face, binds the tensor for ONNX Runtime inference, runs the ArcFace model, and extracts a 512-dimensional embedding.
 
-Finally, TinyVerify compares both embeddings using cosine similarity.
+Finally, TinyVerify compares both embeddings through `FaceVerifier::verify_pair()`, which computes cosine similarity and applies a temporary threshold.
 
 ```text
 TinyVerify initialized successfully
@@ -346,8 +354,7 @@ This project is being used to learn:
 
 Planned future improvements include:
 
-- Move threshold-based SAME / DIFFERENT verification into `FaceVerifier::verify_pair()`
-- Cosine similarity threshold calibration
+- Calibrate the `FaceVerifier::verify_pair()` threshold using more same-person and different-person image pairs
 - pybind11 Python bindings
 - Benchmarking against Python implementations
 - Lightweight web-based demonstration interface
