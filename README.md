@@ -31,30 +31,34 @@ tensor preparation, and scalable verification architecture.
 
 ---
 
-## Planned Architecture
+## Current Architecture
 
 ```text
-Image Input
+Image loading
     ↓
-Face Detection
+Face detection
     ↓
-Face Crop
+Face crop
     ↓
-Image Preprocessing
+Image preprocessing
     ↓
 Tensor Buffer Generation
     ↓
-FaceVerifier
+FaceVerifier::generate_embedding(...)
     ↓
-ONNX Runtime
+ONNX input tensor binding inside FaceVerifier
     ↓
-ArcFace ONNX Model
+ONNX Runtime session.Run(...)
     ↓
-Embedding Vector
+ArcFace output tensor extraction
     ↓
-Cosine Similarity
+Real 512-dimensional embedding generation
     ↓
-Verification Result
+Cosine similarity computation
+    ↓
+FaceVerifier::verify_pair(...)
+    ↓
+VerificationResult
 ```
 
 ---
@@ -78,7 +82,7 @@ Verification Result
 | Placeholder embedding pipeline | ✅ Replaced by real ONNX inference |
 | ONNX Runtime session initialization | ✅ Complete |
 | ArcFace ONNX model loading | 🔄 Works when model file exists |
-| ONNX input tensor binding | ✅ Complete |
+| ONNX input tensor binding inside FaceVerifier | ✅ Complete |
 | Real ONNX Runtime inference execution | ✅ Complete |
 | ArcFace embedding extraction | ✅ Complete |
 | Cosine similarity computation | ✅ Complete |
@@ -102,7 +106,8 @@ The current preprocessing pipeline performs:
 5. Convert OpenCV HWC image memory into CHW tensor layout
 6. Store the result in a contiguous tensor buffer
 
-This prepares image data for ONNX Runtime input tensor binding.
+This prepares image data as a CHW float tensor buffer. `FaceVerifier` then owns
+the ONNX Runtime input tensor binding step.
 
 ---
 
@@ -117,9 +122,9 @@ The current TinyVerify pipeline successfully performs:
    - resize to 112x112
    - BGR → RGB conversion
    - normalization to 0.0–1.0
-5. CHW tensor buffer preparation for ONNX Runtime inference
-6. ONNX Runtime input tensor binding
-7. ArcFace inference execution
+5. CHW tensor buffer preparation
+6. ONNX Runtime input tensor binding inside `FaceVerifier`
+7. ArcFace inference execution inside `FaceVerifier`
 8. Real 512-dimensional embedding extraction for image A
 9. Real 512-dimensional embedding extraction for image B
 10. Cosine similarity computation between two real embeddings
@@ -145,8 +150,12 @@ ONNX Runtime inference orchestration.
 The top-level `main.cpp` orchestration has also been cleaned up with a reusable
 `process_image_to_embedding()` helper. This helper runs the full single-image
 pipeline for each input image: image loading, face detection, debug artifact
-export, face cropping, preprocessing, ONNX tensor binding, and ArcFace embedding
-generation.
+export, face cropping, preprocessing, and ArcFace embedding generation.
+
+`main.cpp` no longer creates ONNX Runtime tensors directly. The preprocessed
+CHW float buffer is passed into `FaceVerifier::generate_embedding()`, and
+`FaceVerifier` now owns ONNX Runtime memory descriptor creation, input tensor
+binding, `session.Run(...)`, and embedding extraction.
 
 The current inference layer supports:
 
@@ -154,8 +163,8 @@ The current inference layer supports:
 - modular inference ownership separation
 - ONNX Runtime session initialization
 - ArcFace ONNX model loading when the model file exists
-- ONNX input tensor binding
-- real ONNX Runtime `session.Run(...)` execution
+- ONNX input tensor binding inside `FaceVerifier`
+- real ONNX Runtime `session.Run(...)` execution inside `FaceVerifier`
 - ArcFace output tensor extraction
 - real 512-dimensional embedding generation
 - cosine similarity computation
@@ -163,9 +172,10 @@ The current inference layer supports:
 - structured `VerificationResult` output
 
 Current embedding behavior now uses real ONNX Runtime inference. A preprocessed
-CHW float tensor is bound to an ONNX Runtime input tensor, executed through the
-ArcFace ONNX model using `session.Run(...)`, and copied into a real
-512-dimensional embedding vector.
+CHW float tensor buffer is passed into `FaceVerifier::generate_embedding()`.
+Inside `FaceVerifier`, the buffer is bound to an ONNX Runtime input tensor,
+executed through the ArcFace ONNX model using `session.Run(...)`, and copied
+into a real 512-dimensional embedding vector.
 
 The preprocessing tensor layout has been updated from OpenCV-style HWC memory
 to ONNX-compatible CHW layout for the input shape `[1, 3, 112, 112]`.
@@ -183,11 +193,9 @@ Image preprocessing
     ↓
 Tensor Buffer Generation
     ↓
-FaceVerifier
+FaceVerifier::generate_embedding(...)
     ↓
-ONNX Runtime session setup
-    ↓
-ONNX input tensor binding
+ONNX input tensor binding inside FaceVerifier
     ↓
 ONNX Runtime session.Run(...)
     ↓
@@ -262,7 +270,10 @@ The example below shows TinyVerify processing two input images:
 - `data/person_a.jpg`
 - `data/person_b.jpg`
 
-For each image, TinyVerify detects a face, saves debug artifacts, preprocesses the cropped face, binds the tensor for ONNX Runtime inference, runs the ArcFace model, and extracts a 512-dimensional embedding.
+For each image, TinyVerify detects a face, saves debug artifacts, preprocesses
+the cropped face into a CHW float buffer, passes that buffer into
+`FaceVerifier`, runs the ArcFace model, and extracts a 512-dimensional
+embedding.
 
 Finally, TinyVerify compares both embeddings through `FaceVerifier::verify_pair()`, which computes cosine similarity and applies a temporary threshold.
 
