@@ -673,8 +673,6 @@ int main() {
         << (is_same_identity ? "SAME identity" : "DIFFERENT identity")
         << std::endl;
 
-    std::cout << "Program exited successfully with code 0." << std::endl;
-
     /**
      * ========================================================================
      * STAGE 9 — SUCCESSFUL PROGRAM EXIT
