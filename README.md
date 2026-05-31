@@ -64,7 +64,7 @@ Verification Result
 | Component | Status |
 |---|---|
 | Image loading (OpenCV) | ✅ Complete |
-| Image preprocessing pipeline | ✅ Working, needs controlled validation |
+| Image preprocessing pipeline | ✅ Working with controlled validation |
 | Resize to 112x112 | ✅ Complete |
 | BGR → RGB conversion | ✅ Validated with controlled color test |
 | Pixel normalization | ✅ Complete |
@@ -141,6 +141,12 @@ The project currently outputs:
 
 TinyVerify now includes a dedicated `FaceVerifier` module responsible for
 ONNX Runtime inference orchestration.
+
+The top-level `main.cpp` orchestration has also been cleaned up with a reusable
+`process_image_to_embedding()` helper. This helper runs the full single-image
+pipeline for each input image: image loading, face detection, debug artifact
+export, face cropping, preprocessing, ONNX tensor binding, and ArcFace embedding
+generation.
 
 The current inference layer supports:
 

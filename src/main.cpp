@@ -84,12 +84,12 @@
 
  /**
   * ============================================================================
-  * FUNCTION: generate_embedding_from_image
+  * FUNCTION: process_image_to_embedding
   * ============================================================================
   *
   * Responsibility:
   *
-  * Convert one image file into one ArcFace embedding.
+  * Run the full single-image pipeline and return one ArcFace embedding.
   *
   * This helper function exists because the same full pipeline must be run for
   * both person_a.jpg and person_b.jpg.
@@ -162,7 +162,7 @@
   *
   * ============================================================================
   */
-std::vector<float> generate_embedding_from_image(
+std::vector<float> process_image_to_embedding(
     const std::string& image_path,
     const std::string& debug_prefix,
     const std::string& display_label,
@@ -623,13 +623,13 @@ int main() {
      *
      * image_a_path
      *     ↓
-     * generate_embedding_from_image(...)
+     * process_image_to_embedding(...)
      *     ↓
      * embedding_a
      *
      * image_b_path
      *     ↓
-     * generate_embedding_from_image(...)
+     * process_image_to_embedding(...)
      *     ↓
      * embedding_b
      *
@@ -801,7 +801,7 @@ int main() {
      * ========================================================================
      */
     std::vector<float> embedding_a =
-        generate_embedding_from_image(
+        process_image_to_embedding(
             image_a_path,
             image_a_debug_prefix,
             image_a_label,
@@ -831,7 +831,7 @@ int main() {
      * ========================================================================
      */
     std::vector<float> embedding_b =
-        generate_embedding_from_image(
+        process_image_to_embedding(
             image_b_path,
             image_b_debug_prefix,
             image_b_label,
