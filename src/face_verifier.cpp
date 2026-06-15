@@ -4,6 +4,7 @@
 #include <stdexcept>
 #include <cmath>
 #include <array>
+#include <string>
 
 /**
  * ============================================================================
@@ -247,6 +248,45 @@ std::vector<float> FaceVerifier::generate_embedding(
      */
     auto output_info = output_tensor.GetTensorTypeAndShapeInfo();
     size_t output_element_count = output_info.GetElementCount();
+
+    /**
+     * Architecture check:
+     *
+     * FaceVerifier owns the ArcFace model output contract.
+     *
+     * main.cpp should not need to know whether the ONNX model returns
+     * [1, 512], [512], or any other raw tensor shape. The application layer
+     * only expects FaceVerifier to return a valid facial embedding.
+     *
+     * Framework responsibility:
+     *
+     * ONNX Runtime only gives TinyVerify the model output tensor. It does not
+     * know that this project expects an ArcFace-style 512-dimensional embedding.
+     *
+     * TinyVerify must validate that contract before accepting the output as a
+     * usable face embedding.
+     *
+     * Workflow:
+     *
+     * session_.Run(...)
+     *     ↓
+     * ONNX output tensor
+     *     ↓
+     * validate ArcFace embedding size
+     *     ↓
+     * copy tensor data into std::vector<float>
+     *     ↓
+     * return verified embedding to the rest of the pipeline
+     */
+    constexpr size_t EXPECTED_ARCFACE_EMBEDDING_SIZE = 512;
+
+    if (output_element_count != EXPECTED_ARCFACE_EMBEDDING_SIZE)
+    {
+        throw std::runtime_error(
+            "Invalid ArcFace output embedding size. Expected 512 floats, but received " +
+            std::to_string(output_element_count)
+        );
+    }
 
     /**
      * Copy ONNX Runtime output memory into a normal C++ vector.
