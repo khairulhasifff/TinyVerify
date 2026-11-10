@@ -106,7 +106,7 @@ The current preprocessing pipeline performs:
 1. Image loading using OpenCV
 2. Resize image to 112x112
 3. Convert BGR color space to RGB
-4. Normalize pixel values from 0–255 to 0.0–1.0
+4. Normalize pixel values from 0–255 to -1.0–1.0 using `(x - 127.5) / 127.5`
 5. Convert OpenCV HWC image memory into CHW tensor layout
 6. Store the result in a contiguous tensor buffer
 
@@ -125,7 +125,7 @@ The current TinyVerify pipeline successfully performs:
 4. Image preprocessing:
    - resize to 112x112
    - BGR → RGB conversion
-   - normalization to 0.0–1.0
+   - normalization to -1.0–1.0
 5. CHW tensor buffer preparation
 6. ONNX Runtime input tensor binding inside `FaceVerifier`
 7. ArcFace inference execution inside `FaceVerifier`
@@ -296,14 +296,14 @@ TinyVerify initialized successfully
 -----------------------------------
 Width: 112
 Height: 112
-Min: 0
+Min: -1
 Max: 1
 Tensor size: 37632
 
 [Preprocessing Validation]
 Controlled input: OpenCV BGR red pixel cv::Scalar(0, 0, 255)
-Expected RGB CHW first pixel: R=1, G=0, B=0
-Observed RGB CHW first pixel: R=1, G=0, B=0
+Expected RGB CHW first pixel: R=1, G=-1, B=-1
+Observed RGB CHW first pixel: R=1, G=-1, B=-1
 Preprocessing color/layout validation: PASSED
 -----------------------------------
 FaceVerifier ONNX session loaded successfully
@@ -340,13 +340,13 @@ ArcFace embedding size: 512
 -----------------------------------
 
 [Comparison]
-Two-image cosine similarity: 0.9829
+Two-image cosine similarity: 0.982955
 Verification threshold: 0.6
 Verification result: SAME identity
 Program exited successfully with code 0.
 ```
 
-In this run, TinyVerify generated two real ArcFace embeddings, computed a cosine similarity score of `0.9829`, compared it against a temporary threshold of `0.6`, and returned `SAME identity`.
+In this run, TinyVerify generated two real ArcFace embeddings, computed a cosine similarity score of `0.982955`, compared it against a temporary threshold of `0.6`, and returned `SAME identity`.
 
 A higher cosine similarity score means the two embeddings are more similar. The current SAME / DIFFERENT result is only a prototype decision because the threshold has not yet been calibrated with a larger evaluation dataset.
 

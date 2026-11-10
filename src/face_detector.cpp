@@ -1,5 +1,6 @@
 #include "face_detector.h"
-#include <iostream>
+#include <algorithm>
+#include <stdexcept>
 
 /**
  * ============================================================================
@@ -22,12 +23,11 @@
 FaceDetector::FaceDetector(const std::string& cascade_path) {
 
     // Load Haar Cascade classifier into memory
+    // Fail fast: an empty classifier would only throw later inside detect().
     if (!face_cascade_.load(cascade_path)) {
-
-        std::cerr
-            << "[SYSTEM-ERROR] Failed to load cascade classifier: "
-            << cascade_path
-            << std::endl;
+        throw std::runtime_error(
+            "Failed to load cascade classifier: " + cascade_path
+        );
     }
 }
 
@@ -96,14 +96,21 @@ cv::Rect FaceDetector::detect(const cv::Mat& image) {
      * STEP 4: Primary Face Selection
      *
      * Current implementation:
-     * - returns first detected face
+     * - returns the largest detected face
+     *
+     * Haar cascades often add small false positives in the background,
+     * and detectMultiScale returns boxes in no particular order, so
+     * faces[0] is not guaranteed to be the subject.
      *
      * Future improvements:
-     * - largest face selection
      * - confidence ranking
      * - multi-face handling
      */
-    return faces[0];
+    return *std::max_element(
+        faces.begin(),
+        faces.end(),
+        [](const cv::Rect& a, const cv::Rect& b) { return a.area() < b.area(); }
+    );
 }
 
 /**

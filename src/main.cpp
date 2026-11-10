@@ -1,6 +1,8 @@
 #include <iostream>
 #include <vector>
 #include <string>
+#include <cmath>
+#include <filesystem>
 
 #include <opencv2/opencv.hpp>
 #include <opencv2/core/utils/logger.hpp>
@@ -470,8 +472,8 @@ std::vector<float> process_image_to_embedding(
  * After preprocessing, the first pixel in CHW layout should be:
  *
  * R = 1.0
- * G = 0.0
- * B = 0.0
+ * G = -1.0
+ * B = -1.0
  *
  * This validates both:
  * - BGR → RGB channel conversion
@@ -514,7 +516,7 @@ bool validate_preprocessing_color_layout(ImagePreprocessor& preprocessor)
     std::cout << std::endl;
     std::cout << "[Preprocessing Validation]" << std::endl;
     std::cout << "Controlled input: OpenCV BGR red pixel cv::Scalar(0, 0, 255)" << std::endl;
-    std::cout << "Expected RGB CHW first pixel: R=1, G=0, B=0" << std::endl;
+    std::cout << "Expected RGB CHW first pixel: R=1, G=-1, B=-1" << std::endl;
     std::cout << "Observed RGB CHW first pixel: "
         << "R=" << r
         << ", G=" << g
@@ -522,9 +524,10 @@ bool validate_preprocessing_color_layout(ImagePreprocessor& preprocessor)
         << std::endl;
 
     const bool is_valid =
-        (r == 1.0f) &&
-        (g == 0.0f) &&
-        (b == 0.0f);
+        // 255 * (1/127.5) - 1 lands a float ULP below 1.0, so compare with a tolerance
+        (std::abs(r - 1.0f) < 1e-5f) &&
+        (std::abs(g + 1.0f) < 1e-5f) &&
+        (std::abs(b + 1.0f) < 1e-5f);
 
     std::cout << "Preprocessing color/layout validation: "
         << (is_valid ? "PASSED" : "FAILED")
@@ -575,7 +578,10 @@ bool validate_preprocessing_color_layout(ImagePreprocessor& preprocessor)
  *
  * ============================================================================
  */
-int main() {
+// Function-try-block: ONNX Runtime, OpenCV and FaceVerifier report failures
+// (missing model, bad tensor size, missing cascade) by throwing. Catch them
+// here so the user sees the reason instead of an unexplained abort.
+int main() try {
 
     /**
      * ========================================================================
@@ -592,6 +598,9 @@ int main() {
     cv::utils::logging::setLogLevel(
         cv::utils::logging::LOG_LEVEL_ERROR
     );
+
+    // cv::imwrite does not create folders, so debug images were silently dropped.
+    std::filesystem::create_directories("output");
 
     std::cout << "TinyVerify initialized successfully" << std::endl;
     std::cout << "-----------------------------------" << std::endl;
@@ -721,7 +730,7 @@ int main() {
      *     ↓
      * BGR → RGB conversion
      *     ↓
-     * Normalize to float [0.0, 1.0]
+     * Normalize to float [-1.0, 1.0]
      *     ↓
      * HWC → CHW tensor layout
      *
@@ -898,4 +907,8 @@ int main() {
      * ========================================================================
      */
     return 0;
+}
+catch (const std::exception& e) {
+    std::cerr << "[SYSTEM-ERROR] " << e.what() << std::endl;
+    return -1;
 }

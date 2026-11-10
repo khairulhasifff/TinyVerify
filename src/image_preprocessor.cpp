@@ -28,9 +28,9 @@ std::vector<float> ImagePreprocessor::preprocess(const cv::Mat& image, bool debu
     cv::Mat rgb_image;
     cv::cvtColor(resized_image, rgb_image, cv::COLOR_BGR2RGB);
 
-    // 3. Precision Scaling & Normalization: Scale into explicit [0.0, 1.0] float bounds
+    // 3. Precision Scaling & Normalization: (x - 127.5) / 127.5 -> [-1.0, 1.0], the range insightface ArcFace was trained on
     cv::Mat float_image;
-    rgb_image.convertTo(float_image, CV_32FC3, 1.0 / 255.0);
+    rgb_image.convertTo(float_image, CV_32FC3, 1.0 / 127.5, -1.0);
 
     // Observability Logging: Scan matrix memory blocks for min/max values
     double min_val, max_val;

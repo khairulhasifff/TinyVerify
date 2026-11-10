@@ -15,7 +15,7 @@
  * | 1. Structural Conformance (112x112)    |
  * | 2. Chromatic Realignment (BGR -> RGB)  |
  * | 3. Precision Scaling (uint8 -> float32)|
- * | 4. Normalization Range ([0.0, 1.0])    |
+ * | 4. Normalization Range ([-1.0, 1.0])   |
  * | 5. Tensor Layout Conversion (HWC->CHW) |
  * +----------------------------------------+
  *          │

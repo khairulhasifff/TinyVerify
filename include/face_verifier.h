@@ -123,7 +123,7 @@ public:
      * - cropped face image
      * - resize to 112x112
      * - BGR to RGB conversion
-     * - normalization to float [0.0, 1.0]
+     * - normalization to float [-1.0, 1.0]
      * - HWC to CHW layout conversion
      *
      * FaceVerifier owns:
@@ -137,7 +137,7 @@ public:
      * - flat std::vector<float>
      * - shape: [1, 3, 112, 112]
      * - layout: CHW / NCHW-compatible
-     * - values: normalized float [0.0, 1.0]
+     * - values: normalized float [-1.0, 1.0]
      *
      * Output:
      * - ArcFace facial embedding vector, normally 512 floats

@@ -4,6 +4,7 @@
 #include <stdexcept>
 #include <cmath>
 #include <array>
+#include <filesystem>
 #include <string>
 
 /**
@@ -50,20 +51,19 @@ FaceVerifier::FaceVerifier(const std::string& model_path)
       session_options_(),
       session_(nullptr)
 {
-    session_options_.SetIntraOpNumThreads(1);
-
+    // Intra-op thread count is left at ONNX Runtime's default (one per
+    // physical core); forcing 1 thread made every inference single-core.
     session_options_.SetGraphOptimizationLevel(
-        GraphOptimizationLevel::ORT_ENABLE_EXTENDED
+        GraphOptimizationLevel::ORT_ENABLE_ALL
     );
 
-    std::wstring wide_model_path(
-        model_path.begin(),
-        model_path.end()
-    );
+    // std::filesystem::path converts to the platform's native ORTCHAR_T
+    // string (wchar_t on Windows) correctly, including non-ASCII paths.
+    const std::filesystem::path native_model_path(model_path);
 
     session_ = Ort::Session(
         env_,
-        wide_model_path.c_str(),
+        native_model_path.c_str(),
         session_options_
     );
 
