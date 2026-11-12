@@ -1,3 +1,6 @@
+// TinyVerify: two face photos -> two ArcFace embeddings -> SAME / DIFFERENT.
+// Pipeline per image: imread -> FaceDetector -> crop -> ImagePreprocessor -> FaceVerifier.
+
 #include <iostream>
 #include <vector>
 #include <string>
@@ -11,155 +14,8 @@
 #include "face_detector.h"
 #include "face_verifier.h"
 
-/**
- * ============================================================================
- * TINYVERIFY — PIPELINE ORCHESTRATION ENTRYPOINT
- * ============================================================================
- *
- * Project Role:
- *
- * This file is the top-level orchestration layer for TinyVerify.
- *
- * It connects:
- *
- * - OpenCV image loading
- * - OpenCV / Haar Cascade face detection
- * - face cropping
- * - ImagePreprocessor tensor buffer preparation
- * - FaceVerifier embedding generation
- * - ArcFace ONNX inference through FaceVerifier
- * - verification result reporting
- *
- * Current Engineering Goal:
- *
- * Move from a one-image self-similarity sanity test into a two-image
- * embedding comparison test.
- *
- * Previous behavior:
- *
- * image A
- *     ↓
- * embedding A
- *     ↓
- * compare embedding A against itself
- *
- * New behavior:
- *
- * image A
- *     ↓
- * embedding A
- *
- * image B
- *     ↓
- * embedding B
- *
- * embedding A + embedding B
- *     ↓
- * FaceVerifier::verify_pair(...)
- *     ↓
- * VerificationResult
- *
- * Frameworks Used:
- *
- * - OpenCV:
- *   Used for image loading, face detection, drawing debug rectangles,
- *   image cropping, and saving debug output images.
- *
- * - ONNX Runtime:
- *   Used indirectly through FaceVerifier to create input tensors and execute
- *   the ArcFace ONNX model.
- *
- * - ArcFace:
- *   Deep face-recognition model that converts a face image into a
- *   512-dimensional embedding vector.
- *
- * - TinyVerify custom modules:
- *   FaceDetector       → detects and crops faces
- *   ImagePreprocessor  → converts cropped face image into CHW float tensor
- *   FaceVerifier       → runs ONNX inference, compares embeddings, and returns a verification result
- *
- * ============================================================================
- */
-
-
- /**
-  * ============================================================================
-  * FUNCTION: process_image_to_embedding
-  * ============================================================================
-  *
-  * Responsibility:
-  *
-  * Run the full single-image pipeline and return one ArcFace embedding.
-  *
-  * This helper function exists because the same full pipeline must be run for
-  * both person_a.jpg and person_b.jpg.
-  *
-  * Without this helper, main() would need to duplicate the same image loading,
- * face detection, cropping, preprocessing, and embedding generation code
- * twice.
-  *
-  * Full Internal Flow:
-  *
-  * Image Path
-  *     ↓
-  * cv::imread
-  *     ↓
-  * cv::Mat image
-  *     ↓
-  * FaceDetector::detect
-  *     ↓
-  * Face bounding box
-  *     ↓
-  * Debug rectangle image export
-  *     ↓
-  * FaceDetector::crop_face
-  *     ↓
-  * Cropped face image
-  *     ↓
-  * ImagePreprocessor::preprocess
-  *     ↓
- * CHW float tensor buffer
- *     ↓
- * FaceVerifier::generate_embedding
- *     ↓
- * ONNX Runtime tensor binding inside FaceVerifier
- *     ↓
- * 512-dimensional ArcFace embedding
-  *
-  * Parameters:
-  *
-  * image_path:
-  *     Path to the input image on disk.
-  *
-  * debug_prefix:
-  *     Prefix used when saving debug images to output/.
-  *     Example:
-  *     - person_a_detected_face.jpg
-  *     - person_a_cropped_face.jpg
-  *
-  * detector:
-  *     Existing FaceDetector instance.
-  *
-  * preprocessor:
-  *     Existing ImagePreprocessor instance.
-  *
-  * verifier:
-  *     Existing FaceVerifier instance holding the ArcFace ONNX Runtime session.
-  *
-  *
-  * Return:
-  *
-  * std::vector<float>
-  *     A real ArcFace embedding vector.
-  *
-  * Failure Behavior:
-  *
-  * Returns an empty vector if:
-  * - the image cannot be loaded
-  * - no face is detected
-  *
-  * ============================================================================
-  */
+// Runs the full single-image pipeline. Returns an empty vector if the image
+// cannot be read or has no face. Saves debug images to output/<debug_prefix>_*.jpg.
 std::vector<float> process_image_to_embedding(
     const std::string& image_path,
     const std::string& debug_prefix,
@@ -168,323 +24,66 @@ std::vector<float> process_image_to_embedding(
     ImagePreprocessor& preprocessor,
     FaceVerifier& verifier
 ) {
-    /**
-     * ========================================================================
-     * STAGE A1 — IMAGE INGESTION
-     * ========================================================================
-     *
-     * Framework:
-     * OpenCV
-     *
-     * cv::imread loads an image file from disk and decodes it into a cv::Mat.
-     *
-     * Important:
-     * OpenCV loads images in BGR channel order by default.
-     * TinyVerify's ImagePreprocessor is responsible for converting BGR to RGB.
-     * ========================================================================
-     */
-    cv::Mat input_image = cv::imread(image_path);
+    cv::Mat input_image = cv::imread(image_path);  // OpenCV loads BGR
     std::cout << std::endl;
     std::cout << "[" << display_label << "]" << std::endl;
     std::cout << "Input image: " << image_path << std::endl;
 
-    /**
-     * ========================================================================
-     * STAGE A2 — IMAGE LOAD VALIDATION
-     * ========================================================================
-     *
-     * Defensive check to prevent the rest of the pipeline from running on an
-     * invalid or missing image.
-     * ========================================================================
-     */
     if (input_image.empty()) {
         std::cerr << "[SYSTEM-ERROR] Could not read image asset: "
             << image_path
             << std::endl;
-
         return {};
     }
 
-    /**
-     * ========================================================================
-     * STAGE A3 — FACE DETECTION
-     * ========================================================================
-     *
-     * Framework:
-     * OpenCV Haar Cascade through TinyVerify FaceDetector.
-     *
-     * The detector scans the image and returns a cv::Rect describing the
-     * detected face location.
-     *
-     * Output:
-     * - x coordinate
-     * - y coordinate
-     * - width
-     * - height
-     * ========================================================================
-     */
     cv::Rect face_box = detector.detect(input_image);
 
-    /**
-     * ========================================================================
-     * STAGE A4 — FACE DETECTION VALIDATION
-     * ========================================================================
-     *
-     * If no face is found, this image cannot produce a valid ArcFace embedding.
-     * ========================================================================
-     */
     if (face_box.empty()) {
         std::cerr << "[SYSTEM-ERROR] No face detected in image: "
             << image_path
             << std::endl;
-
         return {};
     }
 
-    /**
-     * ========================================================================
-     * STAGE A5 — DEBUG VISUALIZATION
-     * ========================================================================
-     *
-     * Framework:
-     * OpenCV
-     *
-     * clone() is used so the debug rectangle does not modify the original image
-     * that will later be used for cropping.
-     *
-     * This keeps the inference input clean.
-     * ========================================================================
-     */
+    // Draw on a copy so the box never reaches the crop that goes to the model.
     cv::Mat debug_image = input_image.clone();
-
-    cv::rectangle(
-        debug_image,
-        face_box,
-        cv::Scalar(0, 255, 0),
-        2
-    );
+    cv::rectangle(debug_image, face_box, cv::Scalar(0, 255, 0), 2);
 
     std::string detected_output =
         "output/" + debug_prefix + "_detected_face.jpg";
-
     cv::imwrite(detected_output, debug_image);
 
-    /**
-     * ========================================================================
-     * STAGE A6 — FACE REGION EXTRACTION
-     * ========================================================================
-     *
-     * Framework:
-     * OpenCV through TinyVerify FaceDetector.
-     *
-     * The model should receive the face region, not the full background image.
-     * ========================================================================
-     */
-    cv::Mat cropped_face =
-        detector.crop_face(input_image, face_box);
+    cv::Mat cropped_face = detector.crop_face(input_image, face_box);
 
     std::string cropped_output =
         "output/" + debug_prefix + "_cropped_face.jpg";
-
     cv::imwrite(cropped_output, cropped_face);
 
-    /**
-     * ========================================================================
-     * STAGE A7 — FACE DETECTION DEBUG LOGGING
-     * ========================================================================
-     *
-     * These logs make it clear which image was processed and what face region
-     * was detected.
-     * ========================================================================
-     */
     std::cout << "Face detected successfully" << std::endl;
-
     std::cout << "Bounding box: "
         << "x=" << face_box.x
         << ", y=" << face_box.y
         << ", width=" << face_box.width
         << ", height=" << face_box.height
         << std::endl;
+    std::cout << "Saved debug image: " << detected_output << std::endl;
+    std::cout << "Saved cropped face: " << cropped_output << std::endl;
 
-    std::cout << "Saved debug image: "
-        << detected_output
-        << std::endl;
+    std::vector<float> model_input = preprocessor.preprocess(cropped_face);
 
-    std::cout << "Saved cropped face: "
-        << cropped_output
-        << std::endl;
-
-    /**
-     * ========================================================================
-     * STAGE A8 — IMAGE PREPROCESSING
-     * ========================================================================
-     *
-     * Framework:
-     * OpenCV inside TinyVerify ImagePreprocessor.
-     *
-     * Expected preprocessing responsibilities:
-     *
-     * Cropped Face
-     *     ↓
-     * Resize to 112x112
-     *     ↓
-     * BGR to RGB conversion
-     *     ↓
-     * Float normalization
-     *     ↓
-     * HWC to CHW layout conversion
-     *
-     * Output:
-     * Flat std::vector<float> containing:
-     *
-     * 1 * 3 * 112 * 112 = 37,632 float values
-     *
-     * This is the tensor buffer that ONNX Runtime will bind.
-     * ========================================================================
-     */
-    std::vector<float> model_input =
-        preprocessor.preprocess(cropped_face);
-
-    /**
-     * ========================================================================
-     * STAGE A9 — PREPROCESSED TENSOR BUFFER SUMMARY
-     * ========================================================================
-     *
-     * Framework:
-     * TinyVerify orchestration logging
-     * 
-     * Purpose:
-     * Print the model input contract expected by FaceVerifier.
-     *
-     * ArcFace Buffalo expects input shape:
-     *
-     * [batch, channels, height, width]
-     *
-     * [1, 3, 112, 112]
-     *
-     * Meaning:
-     * - 1 image
-     * - 3 RGB channels
-     * - 112 pixel height
-     * - 112 pixel width
-     * ========================================================================
-     */
     std::cout << "Preprocessed tensor shape: [1, 3, 112, 112]" << std::endl;
     std::cout << "Tensor size: " << model_input.size() << std::endl;
 
-    /**
-     * ========================================================================
-     * STAGE A10 — ARCFACE EMBEDDING GENERATION
-     * ========================================================================
-     *
-     * Architecture:
-     *
-     * main.cpp remains the orchestration layer.
-     *
-     * It does not create ONNX Runtime tensors directly.
-     * Instead, it passes the preprocessed CHW float buffer to FaceVerifier.
-     *
-     * FaceVerifier owns:
-     * - ONNX Runtime memory descriptor creation
-     * - Ort::Value tensor creation
-     * - ONNX input/output binding
-     * - session_.Run(...)
-     * - embedding extraction
-     *
-     * Current Flow:
-     *
-     * CHW float tensor buffer
-     *     ↓
-     * FaceVerifier::generate_embedding(...)
-     *     ↓
-     * ONNX Runtime tensor binding
-     *     ↓
-     * ArcFace inference
-     *     ↓
-     * 512-dimensional embedding
-     * ========================================================================
-     */
-    std::vector<float> embedding =
-        verifier.generate_embedding(model_input);
+    std::vector<float> embedding = verifier.generate_embedding(model_input);
 
-    /**
-     * ========================================================================
-     * STAGE A11 — EMBEDDING OUTPUT LOGGING
-     * ========================================================================
-     *
-     * Framework:
-     * ONNX Runtime + ArcFace ONNX model
-     *
-     * FaceVerifier::generate_embedding() is responsible for:
-     *
-     * - passing the tensor into session_.Run(...)
-     * - reading the output tensor
-     * - converting the output to std::vector<float>
-     *
-     * Expected output:
-     * 512-dimensional ArcFace embedding.
-     * ========================================================================
-     */
-    std::cout << "ArcFace embedding size: "
-        << embedding.size()
-        << std::endl;
-
+    std::cout << "ArcFace embedding size: " << embedding.size() << std::endl;
     std::cout << "-----------------------------------" << std::endl;
 
     return embedding;
 }
 
-/**
- * ============================================================================
- * FUNCTION: validate_preprocessing_color_layout
- * ============================================================================
- *
- * Responsibility:
- *
- * Run a controlled preprocessing sanity check for BGR → RGB conversion and
- * CHW tensor layout.
- *
- * Why This Exists:
- *
- * OpenCV stores color images in BGR order by default.
- * ArcFace-style model inputs usually expect RGB channel order.
- *
- * TinyVerify's ImagePreprocessor is responsible for:
- *
- * BGR image
- *     ↓
- * RGB conversion
- *     ↓
- * normalization
- *     ↓
- * CHW tensor layout
- *
- * This test creates a known solid red OpenCV image:
- *
- * cv::Scalar(0, 0, 255)
- *
- * In OpenCV BGR order, that means:
- *
- * B = 0
- * G = 0
- * R = 255
- *
- * After preprocessing, the first pixel in CHW layout should be:
- *
- * R = 1.0
- * G = -1.0
- * B = -1.0
- *
- * This validates both:
- * - BGR → RGB channel conversion
- * - HWC → CHW tensor indexing
- *
- * Current Limitation:
- *
- * This is a simple sanity check, not a full unit test framework.
- *
- * ============================================================================
- */
+// Self-check for BGR -> RGB and HWC -> CHW: a solid red BGR image must come out
+// as R=1, G=-1, B=-1 in the first pixel of each CHW plane.
 bool validate_preprocessing_color_layout(ImagePreprocessor& preprocessor)
 {
     constexpr int image_width = 112;
@@ -498,14 +97,12 @@ bool validate_preprocessing_color_layout(ImagePreprocessor& preprocessor)
         cv::Scalar(0, 0, 255)
     );
 
-    std::vector<float> tensor =
-        preprocessor.preprocess(red_bgr_image, true);
+    std::vector<float> tensor = preprocessor.preprocess(red_bgr_image, true);
 
     if (tensor.size() != channel_size * 3) {
         std::cerr << "[PREPROCESS-VALIDATION-ERROR] Unexpected tensor size: "
             << tensor.size()
             << std::endl;
-
         return false;
     }
 
@@ -537,67 +134,11 @@ bool validate_preprocessing_color_layout(ImagePreprocessor& preprocessor)
     return is_valid;
 }
 
-
-/**
- * ============================================================================
- * FUNCTION: main
- * ============================================================================
- *
- * Responsibility:
- *
- * Run the current TinyVerify two-image verification experiment.
- *
- * Current Test:
- *
- * data/person_a.jpg
- *     ↓
- * embedding A
- *
- * data/person_b.jpg
- *     ↓
- * embedding B
- *
- * embedding A + embedding B
- *     ↓
- * cosine similarity score
- *
- * Important:
- *
- * This stage applies a temporary verification threshold through
- * FaceVerifier::verify_pair().
- *
- * The current purpose is only to prove that TinyVerify can:
- *
- * 1. Load two separate images.
- * 2. Detect a face in each image.
- * 3. Generate one real ArcFace embedding for each image.
- * 4. Compute cosine similarity between the two embeddings.
- *
- * Threshold-based same/different identity decisions are currently handled
- * through FaceVerifier::verify_pair() using a temporary threshold.
- *
- * ============================================================================
- */
 // Function-try-block: ONNX Runtime, OpenCV and FaceVerifier report failures
 // (missing model, bad tensor size, missing cascade) by throwing. Catch them
 // here so the user sees the reason instead of an unexplained abort.
 int main() try {
-
-    /**
-     * ========================================================================
-     * STAGE 1 — OPENCV LOG CONFIGURATION
-     * ========================================================================
-     *
-     * Framework:
-     * OpenCV
-     *
-     * This suppresses noisy OpenCV INFO logs so TinyVerify's own pipeline logs
-     * are easier to read.
-     * ========================================================================
-     */
-    cv::utils::logging::setLogLevel(
-        cv::utils::logging::LOG_LEVEL_ERROR
-    );
+    cv::utils::logging::setLogLevel(cv::utils::logging::LOG_LEVEL_ERROR);
 
     // cv::imwrite does not create folders, so debug images were silently dropped.
     std::filesystem::create_directories("output");
@@ -605,307 +146,54 @@ int main() try {
     std::cout << "TinyVerify initialized successfully" << std::endl;
     std::cout << "-----------------------------------" << std::endl;
 
-    /**
-     * ========================================================================
-     * STAGE 1B — DEMO INPUT CONFIGURATION
-     * ========================================================================
-     *
-     * Purpose:
-     *
-     * Define the current two-image verification demo inputs in one place.
-     *
-     * Architectural Reason:
-     *
-     * main.cpp is the orchestration layer.
-     *
-     * It should be responsible for choosing:
-     * - which detector asset is used
-     * - which ArcFace ONNX model is used
-     * - which input images are used
-     * - what labels appear in runtime logs
-     * - what filename prefixes are used for debug artifacts
-     *
-     * However, those values should not be scattered directly inside function
-     * calls throughout the pipeline.
-     *
-     * Keeping them as named constants makes the demo easier to read and easier
-     * to change later.
-     *
-     * Current Demo Flow:
-     *
-     * image_a_path
-     *     ↓
-     * process_image_to_embedding(...)
-     *     ↓
-     * embedding_a
-     *
-     * image_b_path
-     *     ↓
-     * process_image_to_embedding(...)
-     *     ↓
-     * embedding_b
-     *
-     * embedding_a + embedding_b
-     *     ↓
-     * FaceVerifier::verify_pair(...)
-     *     ↓
-     * VerificationResult
-     *
-     * Future Direction:
-     *
-     * These constants can later be replaced by:
-     * - command-line arguments
-     * - config files
-     * - batch evaluation inputs
-     * - API request parameters
-     *
-     * Current State:
-     *
-     * Values are hardcoded intentionally because TinyVerify is still a focused
-     * learning project and local demo pipeline.
-     * ========================================================================
-     */
-
-    constexpr const char* cascade_path =
-        "data/haarcascade_frontalface_default.xml";
-
-    constexpr const char* arcface_model_path =
-        "models/arcface_buffalo_1.onnx";
+    // shortcut: demo inputs are hardcoded; move to command-line args when testing more pairs.
+    constexpr const char* cascade_path = "data/haarcascade_frontalface_default.xml";
+    constexpr const char* arcface_model_path = "models/arcface_buffalo_1.onnx";
 
     constexpr const char* image_a_path = "data/person_a.jpg";
     constexpr const char* image_b_path = "data/person_b.jpg";
 
-    constexpr const char* image_a_debug_prefix = "person_a";
-    constexpr const char* image_b_debug_prefix = "person_b";
-
-    constexpr const char* image_a_label = "Image A";
-    constexpr const char* image_b_label = "Image B";
-
-    /**
-     * ========================================================================
-     * STAGE 2 — FACE DETECTOR INITIALIZATION
-     * ========================================================================
-     *
-     * Framework:
-     * OpenCV Haar Cascade
-     *
-     * The Haar Cascade XML file contains pre-trained classical vision patterns
-     * used to locate frontal faces.
-     * ========================================================================
-     */
-    FaceDetector detector(
-        cascade_path
-    );
-
-    /**
-     * ========================================================================
-     * STAGE 3 — IMAGE PREPROCESSOR INITIALIZATION
-     * ========================================================================
-     *
-     * Framework:
-     * OpenCV + TinyVerify preprocessing layer
-     *
-     * This object prepares cropped face images for ArcFace.
-     * ========================================================================
-     */
-    ImagePreprocessor preprocessor;
-
-    /**
-     * ========================================================================
-     * STAGE 3B — OPTIONAL PREPROCESSING VALIDATION
-     * ========================================================================
-     *
-     * Purpose:
-     *
-     * Run a controlled sanity check for preprocessing correctness before the
-     * real face verification pipeline starts.
-     *
-     * Architectural Reason:
-     *
-     * ImagePreprocessor is responsible for enforcing the model input contract:
-     *
-     * OpenCV BGR image
-     *     ↓
-     * Resize to 112x112
-     *     ↓
-     * BGR → RGB conversion
-     *     ↓
-     * Normalize to float [-1.0, 1.0]
-     *     ↓
-     * HWC → CHW tensor layout
-     *
-     * This validation confirms that the preprocessing layer produces the
-     * expected RGB CHW tensor values for a controlled input image.
-     *
-     * Why This Is Gated:
-     *
-     * Validation is useful during development, but it should not be treated as
-     * a required part of normal verification inference forever.
-     *
-     * Keeping it behind a flag makes the behavior explicit:
-     *
-     * - true  → run preprocessing validation before inference
-     * - false → skip validation and run the verification pipeline directly
-     *
-     * Current State:
-     *
-     * The flag is intentionally set to true while TinyVerify is still in
-     * learning/debug mode.
-     * ========================================================================
-     */
     constexpr bool run_preprocessing_validation = true;
 
-    if (run_preprocessing_validation) {
-        if (!validate_preprocessing_color_layout(preprocessor)) {
-            std::cerr << "[SYSTEM-ERROR] Preprocessing color/layout validation failed." << std::endl;
-            return -1;
-        }
+    FaceDetector detector(cascade_path);
+    ImagePreprocessor preprocessor;
+
+    if (run_preprocessing_validation &&
+        !validate_preprocessing_color_layout(preprocessor)) {
+        std::cerr << "[SYSTEM-ERROR] Preprocessing color/layout validation failed." << std::endl;
+        return -1;
     }
 
-    /**
-     * ========================================================================
-     * STAGE 4 — FACE VERIFIER INITIALIZATION
-     * ========================================================================
-     *
-     * Framework:
-     * ONNX Runtime + ArcFace ONNX model
-     *
-     * FaceVerifier owns the ONNX Runtime session and exposes:
-     *
-     * - generate_embedding()
-     * - compute_similarity()
-     * - verify_pair()
-     * ========================================================================
-     */
-    FaceVerifier verifier(
-        arcface_model_path
-    );
+    FaceVerifier verifier(arcface_model_path);
 
-    /**
-     * ========================================================================
-     * STAGE 6 — GENERATE EMBEDDING A
-     * ========================================================================
-     *
-     * Input:
-     * data/person_a.jpg
-     *
-     * Output:
-     * embedding_a
-     *
-     * This should be a real 512-dimensional ArcFace embedding.
-     * ========================================================================
-     */
-    std::vector<float> embedding_a =
-        process_image_to_embedding(
-            image_a_path,
-            image_a_debug_prefix,
-            image_a_label,
-            detector,
-            preprocessor,
-            verifier
-        );
+    std::vector<float> embedding_a = process_image_to_embedding(
+        image_a_path, "person_a", "Image A", detector, preprocessor, verifier);
 
     if (embedding_a.empty()) {
         std::cerr << "[SYSTEM-ERROR] Failed to generate embedding A." << std::endl;
         return -1;
     }
 
-    /**
-     * ========================================================================
-     * STAGE 7 — GENERATE EMBEDDING B
-     * ========================================================================
-     *
-     * Input:
-     * data/person_b.jpg
-     *
-     * Output:
-     * embedding_b
-     *
-     * This should also be a real 512-dimensional ArcFace embedding.
-     * ========================================================================
-     */
-    std::vector<float> embedding_b =
-        process_image_to_embedding(
-            image_b_path,
-            image_b_debug_prefix,
-            image_b_label,
-            detector,
-            preprocessor,
-            verifier
-        );
+    std::vector<float> embedding_b = process_image_to_embedding(
+        image_b_path, "person_b", "Image B", detector, preprocessor, verifier);
 
     if (embedding_b.empty()) {
         std::cerr << "[SYSTEM-ERROR] Failed to generate embedding B." << std::endl;
         return -1;
     }
 
-    /**
-     * ========================================================================
-     * STAGE 8 — TWO-IMAGE VERIFICATION DECISION
-     * ========================================================================
-     *
-     * Framework:
-     * TinyVerify FaceVerifier verification layer
-     *
-     * This delegates two-image verification to FaceVerifier:
-     *
-     * embedding_a
-     *     ↓
-     * embedding_b
-     *     ↓
-     * FaceVerifier::verify_pair(...)
-     *     ↓
-     * VerificationResult
-     *
-     * Expected behavior:
-     *
-     * - Same or very similar face images should produce a higher score.
-     * - Different identities should usually produce a lower score.
-     *
-     * Important:
-     * 
-     * This stage now applies a temporary, uncalibrated threshold to convert
-     * the cosine similarity score into a basic SAME / DIFFERENT identity result.
-     *
-     * This is still not a production-grade verification decision because the
-     * threshold has not been calibrated with a real evaluation dataset.
-     * ========================================================================
-     */
     std::cout << std::endl;
     std::cout << "[Comparison]" << std::endl;
 
-    /**
-     * FaceVerifier now owns the verification decision workflow.
-     *
-     * main.cpp no longer directly applies:
-     *
-     * similarity >= verification_threshold
-     *
-     * Instead, main.cpp asks FaceVerifier to verify the pair and then prints the
-     * structured VerificationResult.
-     */
-    VerificationResult result =
-        verifier.verify_pair(embedding_a, embedding_b);
+    VerificationResult result = verifier.verify_pair(embedding_a, embedding_b);
 
-    std::cout << "Two-image cosine similarity: "
-        << result.similarity
-        << std::endl;
-
-    std::cout << "Verification threshold: "
-        << result.threshold
-        << std::endl;
-
+    std::cout << "Two-image cosine similarity: " << result.similarity << std::endl;
+    std::cout << "Verification threshold: " << result.threshold << std::endl;
     std::cout << "Verification result: "
         << (result.is_same_identity ? "SAME identity" : "DIFFERENT identity")
         << std::endl;
 
     std::cout << "Program exited successfully with code 0." << std::endl;
-
-    /**
-     * ========================================================================
-     * STAGE 9 — SUCCESSFUL PROGRAM EXIT
-     * ========================================================================
-     */
     return 0;
 }
 catch (const std::exception& e) {

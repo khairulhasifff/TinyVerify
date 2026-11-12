@@ -7,53 +7,14 @@
 #include <filesystem>
 #include <string>
 
-/**
- * ============================================================================
- * CONSTRUCTOR: INFERENCE ENGINE INITIALIZATION
- * ============================================================================
- *
- * Current System Flow:
- *
- * ArcFace ONNX Model
- *     ↓
- * ONNX Runtime Session Initialization
- *     ↓
- * Runtime Memory Allocation
- *     ↓
- * Inference Engine Ready State
- *
- * Architectural Purpose:
- *
- * This constructor is responsible for:
- * - loading the ONNX model into memory
- * - initializing ONNX Runtime
- * - creating inference execution sessions
- * - preparing runtime resources
- *
- * Why This Matters:
- *
- * In production inference systems, model initialization should occur once
- * during startup rather than repeatedly during every inference call.
- *
- * This reduces:
- * - model loading overhead
- * - runtime latency
- * - repeated memory allocation costs
- *
- * Current State:
- *
- * ONNX Runtime integration initialized.
- *
- * ============================================================================
- */
 FaceVerifier::FaceVerifier(const std::string& model_path)
     : env_(ORT_LOGGING_LEVEL_WARNING, "TinyVerify"),
-      session_options_(),
       session_(nullptr)
 {
     // Intra-op thread count is left at ONNX Runtime's default (one per
     // physical core); forcing 1 thread made every inference single-core.
-    session_options_.SetGraphOptimizationLevel(
+    Ort::SessionOptions session_options;
+    session_options.SetGraphOptimizationLevel(
         GraphOptimizationLevel::ORT_ENABLE_ALL
     );
 
@@ -64,96 +25,21 @@ FaceVerifier::FaceVerifier(const std::string& model_path)
     session_ = Ort::Session(
         env_,
         native_model_path.c_str(),
-        session_options_
+        session_options
     );
 
     std::cout << "FaceVerifier ONNX session loaded successfully" << std::endl;
     std::cout << "Model path: " << model_path << std::endl;
 }
 
-/**
- * ============================================================================
- * EMBEDDING GENERATION PIPELINE
- * ============================================================================
- *
- * Current Inference Flow:
- *
- * Preprocessed Tensor Buffer
- *     ↓
- * ONNX Runtime Input Tensor
- *     ↓
- * ArcFace Neural Network
- *     ↓
- * Feature Extraction Layers
- *     ↓
- * Embedding Vector Output
- *
- * What Is An Embedding?
- *
- * A facial embedding is a numerical vector representation of facial features.
- *
- * Instead of storing raw image pixels, modern verification systems transform
- * facial structures into high-dimensional mathematical feature vectors.
- *
- * Typical ArcFace Output:
- * - 512-dimensional float vector
- *
- * Why This Exists:
- *
- * Embeddings allow:
- * - identity comparison
- * - similarity measurement
- * - scalable verification
- * - compact facial representation
- *
- * Current State:
- *
- * Real ONNX Runtime inference execution implemented.
- * This function runs session_.Run(...) and extracts the model output tensor
- * into a C++ embedding vector.
- *
- * ============================================================================
- */
 std::vector<float> FaceVerifier::generate_embedding(
     const std::vector<float>& input_tensor_data
 )
 {
-    /**
-     * FaceVerifier owns ONNX Runtime tensor binding.
-     *
-     * main.cpp should not create Ort::MemoryInfo, Ort::Value, or know the
-     * exact ONNX input shape. main.cpp only passes the preprocessed CHW float
-     * buffer produced by ImagePreprocessor.
-     *
-     * Current model input contract:
-     *
-     * CHW float buffer
-     *     ↓
-     * Shape [1, 3, 112, 112]
-     *     ↓
-     * Ort::Value input tensor
-     *     ↓
-     * ArcFace ONNX Runtime inference
-     */
     const std::array<int64_t, 4> input_shape = { 1, 3, 112, 112 };
-
-    /**
-     * Architecture check:
-     *
-     * ImagePreprocessor owns resize, RGB conversion, normalization,
-     * and HWC-to-CHW conversion.
-     *
-     * FaceVerifier owns the ONNX Runtime inference boundary.
-     * Before creating an Ort::Value tensor, it should confirm that the
-     * incoming buffer matches ArcFace's required input shape:
-     *
-     * [1, 3, 112, 112] = 37632 floats
-     *
-     * This makes TinyVerify fail early with a clear error instead of failing
-     * later inside ONNX Runtime.
-     */
     constexpr size_t EXPECTED_TENSOR_SIZE = 1 * 3 * 112 * 112;
 
+    // Fail here with a clear message instead of deep inside ONNX Runtime.
     if (input_tensor_data.size() != EXPECTED_TENSOR_SIZE)
     {
         throw std::runtime_error(
@@ -167,6 +53,7 @@ std::vector<float> FaceVerifier::generate_embedding(
         OrtMemTypeDefault
     );
 
+    // ONNX Runtime only reads the input buffer, but its API takes a non-const pointer.
     Ort::Value input_tensor = Ort::Value::CreateTensor<float>(
         memory_info,
         const_cast<float*>(input_tensor_data.data()),
@@ -175,15 +62,8 @@ std::vector<float> FaceVerifier::generate_embedding(
         input_shape.size()
     );
 
-    /**
-     * ONNX Runtime uses model input/output node names to connect user-provided
-     * tensors to the loaded neural network graph.
-     *
-     * Instead of hardcoding names such as "input.1" or "output", TinyVerify
-     * asks the loaded ArcFace model what its actual input and output names are.
-     *
-     * This keeps the inference layer more robust across different ONNX exports.
-     */
+    // Ask the model for its node names instead of hardcoding "input.1" etc.,
+    // so other ArcFace exports work too.
     Ort::AllocatorWithDefaultOptions allocator;
 
     auto input_name_allocated = session_.GetInputNameAllocated(0, allocator);
@@ -195,26 +75,6 @@ std::vector<float> FaceVerifier::generate_embedding(
     std::cout << "ONNX Input Name: " << input_name << std::endl;
     std::cout << "ONNX Output Name: " << output_name << std::endl;
 
-    /**
-     * Actual ONNX Runtime inference execution.
-     *
-     * Current Data Flow:
-     *
-     * Preprocessed CHW Tensor
-     *     ↓
-     * ONNX Runtime Input Tensor
-     *     ↓
-     * session_.Run(...)
-     *     ↓
-     * ArcFace Output Tensor
-     *     ↓
-     * Embedding Vector
-     *
-     * Expected input:
-     * - Type: float32
-     * - Shape: [1, 3, 112, 112]
-     * - Layout: NCHW
-     */
     const char* input_names[] = { input_name };
     const char* output_names[] = { output_name };
 
@@ -227,57 +87,15 @@ std::vector<float> FaceVerifier::generate_embedding(
         1
     );
 
-    /**
-     * A successful ArcFace inference call should return at least one output
-     * tensor. If this is empty, ONNX Runtime executed but did not return usable
-     * model output.
-     */
     if (output_tensors.empty())
     {
         throw std::runtime_error("ONNX Runtime returned no output tensors");
     }
 
     Ort::Value& output_tensor = output_tensors.front();
+    size_t output_element_count =
+        output_tensor.GetTensorTypeAndShapeInfo().GetElementCount();
 
-    /**
-     * Extract output tensor metadata.
-     *
-     * Typical ArcFace output:
-     * - Shape: [1, 512]
-     * - Element count: 512
-     */
-    auto output_info = output_tensor.GetTensorTypeAndShapeInfo();
-    size_t output_element_count = output_info.GetElementCount();
-
-    /**
-     * Architecture check:
-     *
-     * FaceVerifier owns the ArcFace model output contract.
-     *
-     * main.cpp should not need to know whether the ONNX model returns
-     * [1, 512], [512], or any other raw tensor shape. The application layer
-     * only expects FaceVerifier to return a valid facial embedding.
-     *
-     * Framework responsibility:
-     *
-     * ONNX Runtime only gives TinyVerify the model output tensor. It does not
-     * know that this project expects an ArcFace-style 512-dimensional embedding.
-     *
-     * TinyVerify must validate that contract before accepting the output as a
-     * usable face embedding.
-     *
-     * Workflow:
-     *
-     * session_.Run(...)
-     *     ↓
-     * ONNX output tensor
-     *     ↓
-     * validate ArcFace embedding size
-     *     ↓
-     * copy tensor data into std::vector<float>
-     *     ↓
-     * return verified embedding to the rest of the pipeline
-     */
     constexpr size_t EXPECTED_ARCFACE_EMBEDDING_SIZE = 512;
 
     if (output_element_count != EXPECTED_ARCFACE_EMBEDDING_SIZE)
@@ -288,12 +106,7 @@ std::vector<float> FaceVerifier::generate_embedding(
         );
     }
 
-    /**
-     * Copy ONNX Runtime output memory into a normal C++ vector.
-     *
-     * This prevents the rest of TinyVerify from depending on ONNX Runtime tensor
-     * lifetime rules.
-     */
+    // Copy out so callers never depend on ONNX Runtime's tensor lifetime.
     float* output_data = output_tensor.GetTensorMutableData<float>();
 
     std::vector<float> embedding(
@@ -307,49 +120,6 @@ std::vector<float> FaceVerifier::generate_embedding(
     return embedding;
 }
 
-/**
- * ============================================================================
- * FACIAL SIMILARITY COMPUTATION PIPELINE
- * ============================================================================
- *
- * Future Verification Flow:
- *
- * Embedding A
- *     ↓
- * Cosine Similarity Computation
- *     ↓
- * Angular Distance Measurement
- *     ↓
- * Similarity Score
- *     ↓
- * Verification Decision
- *
- * Why Cosine Similarity?
- *
- * Face embeddings are directional feature vectors.
- *
- * Cosine similarity measures the angular similarity between vectors,
- * making it highly effective for identity verification tasks.
- *
- * Typical Output:
- *
- * Higher Score:
- * - more similar identity features
- *
- * Lower Score:
- * - less similar identity features
- *
- * Future Responsibilities:
- * - compute cosine similarity
- * - apply verification threshold
- * - return confidence score
- *
- * Current State:
- *
- * Real cosine similarity computation implemented.
- *
- * ============================================================================
- */
 float FaceVerifier::compute_similarity(
     const std::vector<float>& embedding_a,
     const std::vector<float>& embedding_b
@@ -376,88 +146,14 @@ float FaceVerifier::compute_similarity(
         throw std::runtime_error("Cannot compute similarity: embedding norm is zero.");
     }
 
-    float similarity =
-        dot_product /
-        (std::sqrt(norm_a) * std::sqrt(norm_b));
-
-    return similarity;
+    return dot_product / (std::sqrt(norm_a) * std::sqrt(norm_b));
 }
 
-/**
- * ============================================================================
- * VERIFICATION DECISION WORKFLOW
- * ============================================================================
- *
- * Current Verification Flow:
- *
- * Embedding A
- *     ↓
- * Embedding B
- *     ↓
- * Cosine Similarity
- *     ↓
- * Temporary Threshold Comparison
- *     ↓
- * SAME / DIFFERENT Identity Decision
- *     ↓
- * VerificationResult
- *
- * Architectural Purpose:
- *
- * This function moves the verification decision out of main.cpp and into the
- * FaceVerifier module.
- *
- * main.cpp should orchestrate the demo pipeline.
- *
- * FaceVerifier should own:
- *
- * - embedding comparison
- * - similarity scoring
- * - threshold-based verification decision
- *
- * Why This Matters:
- *
- * In a cleaner verification architecture, the application layer should not need
- * to know how identity decisions are made.
- *
- * Instead, it should call:
- *
- * verifier.verify_pair(...)
- *
- * and receive a structured result containing:
- *
- * - similarity score
- * - threshold used
- * - final identity decision
- *
- * Current Limitation:
- *
- * The threshold is still temporary and uncalibrated.
- *
- * This method improves structure, but it does not make the verification result
- * production-grade yet.
- *
- * Future Work:
- *
- * - calibrate threshold using real evaluation data
- * - test same-person and different-person image pairs
- * - add evaluation metrics
- * - move toward confidence reporting
- *
- * ============================================================================
- */
 VerificationResult FaceVerifier::verify_pair(
     const std::vector<float>& embedding_a,
     const std::vector<float>& embedding_b,
     float threshold
 ) const {
-    const float similarity =
-        compute_similarity(embedding_a, embedding_b);
-
-    VerificationResult result;
-    result.similarity = similarity;
-    result.threshold = threshold;
-    result.is_same_identity = similarity >= threshold;
-
-    return result;
+    const float similarity = compute_similarity(embedding_a, embedding_b);
+    return { similarity, threshold, similarity >= threshold };
 }
